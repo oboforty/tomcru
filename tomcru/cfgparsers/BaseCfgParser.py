@@ -1,13 +1,15 @@
 import os
 
-from tomcru.core import TomcruCfg, TomcruRouteDescriptor, TomcruEndpointDescriptor
+from eme.entities import load_settings
+
+from tomcru.core import TomcruCfg, TomcruRouteDescriptor, TomcruEndpointDescriptor, TomcruApiDescriptor
 
 
 class BaseCfgParser:
     def __init__(self, project, name):
         self.proj = project
         self.name = name
-        self.cfg = None
+        self.cfg: TomcruCfg = None
 
     def create_cfg(self, path: str):
         self.cfg = TomcruCfg(path)
@@ -46,21 +48,14 @@ class BaseCfgParser:
                     layers = layers.pop(0)
                 self.cfg.lambdas.add((group, lamb, tuple(layers)))
 
-                _api = None
-                if integration == 'http':
-                    _cont = self.cfg.apis
-                elif integration == 'ws':
-                    _cont = self.cfg.wss
-                elif integration == 'rest':
+                _api_type = integration
+                if _api_type == 'rest':
                     raise Exception("HTTPv1 not supported")
-                else:
-                    # else: no integration
-                    return
 
                 # add Api Gateway integration
-                ep = TomcruEndpointDescriptor(group, route, method, lamb, role, layers)
-                _cont[api_name].setdefault(route, TomcruRouteDescriptor(route, group, api_name))
-                _cont[api_name][route].add_endpoint(ep)
+                self.cfg.apis.setdefault(api_name, TomcruApiDescriptor(api_name, _api_type))
+                self.cfg.apis[api_name].routes.setdefault(TomcruRouteDescriptor(route, group, api_name))
+                self.cfg.apis[api_name].routes[route].add_endpoint(TomcruEndpointDescriptor(group, route, method, lamb, role, layers))
 
     def add_openapi_routes(self, api_name, integration=None, check_files=False):
         from openapi_parser import parse

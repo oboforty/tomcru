@@ -10,12 +10,18 @@ class TomcruCfg:
 
         self.envs = {}
 
-        self.apis: Dict[Dict[TomcruRouteDescriptor]] = defaultdict(dict)
-        self.wss: Dict[Dict[TomcruRouteDescriptor]] = defaultdict(dict)
         self.tasks = {}
-
+        self.apis: Dict[str, TomcruApiDescriptor] = {}
         self.lambdas = set()
         self.layers = []
+        self.env = None
+
+
+class TomcruApiDescriptor:
+    def __init__(self, api_name, api_type):
+        self.api_name = api_name
+        self.api_type = api_type # http | ws | rest
+        self.routes: Dict[TomcruRouteDescriptor] = {}
 
 
 class TomcruRouteDescriptor:
