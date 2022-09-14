@@ -4,9 +4,9 @@ import os
 
 
 class TomcruCfg:
-    def __init__(self, path: str):
-        #self.tpl_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "samapp/tpl")
+    def __init__(self, path: str, pck_path: str):
         self.app_path = path + '/'
+        self.pck_path = pck_path + '/'
 
         self.envs = {}
 

@@ -1,35 +1,39 @@
-from eme.website import WebsiteApp
+import os
 
-from tomcru.core import TomcruApiDescriptor, TomCruProject, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruCfg
+from eme.entities import load_handlers
+
+from tomcru import TomcruApiDescriptor, TomcruProject, TomcruEndpointDescriptor, TomcruRouteDescriptor
+
+from .apps.EmeWebApi import EmeWebApi
 from .controllers.EmeProxyController import EmeProxyController
+from .controllers.HomeController import HomeController
 from .integration.lambda_integ import LambdaIntegration
 
 
 class ApiBuilder:
 
-    def __init__(self, project: TomCruProject):
+    def __init__(self, project: TomcruProject, apigw_cfg):
         self.cfg = project.cfg
+        self.apigw_cfg = apigw_cfg
         self.p = project
 
-        self.lambda_builder = self.p.serv('aws:onpremise:lambda')
+        self.lambda_builder = self.p.serv('aws:onpremise:lambda_b')
 
-    def build_api(self, api_name, api: TomcruApiDescriptor, app: WebsiteApp):
+    def build_api(self, api_name, api: TomcruApiDescriptor) -> EmeWebApi:
+        app = EmeWebApi(self.cfg, self.apigw_cfg)
 
         # build authorizers
 
         # build controllers
 
-        self.p.serv('aws:local_mock:boto3').inject_boto()
+        #self.p.serv('aws:local_mock:boto3_b').inject_boto()
 
         _controllers = {}
 
         # write endpoints to lambda + integrations
         ro: TomcruRouteDescriptor
         for route, ro in api.routes.items():
-            # todo: itt: custom controller HTTP-nek
-            # todo es controlleren belul ne legyen ciganymagia
-            if ro.group not in _controllers:
-                _controllers[ro.group] = EmeProxyController(ro.group, self.on_request)
+            _controllers.setdefault(ro.group, EmeProxyController(ro.group, self.on_request))
 
             endpoint: TomcruEndpointDescriptor
             for endpoint in ro.endpoints:
@@ -37,19 +41,36 @@ class ApiBuilder:
 
                 # pass lambda fn to controller
                 _controllers[ro.group].add_method(endpoint, fn)
-                self.add_method(app, endpoint, lamb_name)
+                self.add_method(app, endpoint)
 
-        self.proxy_integrator.load_eme_handlers(_controllers)
+        self.load_eme_handlers(app, _controllers)
 
-        self.p.serv('aws:local_mock:boto3').detach_boto()
+        #self.p.serv('aws:local_mock:boto3').detach_boto()
+
+        return app
 
     def on_request(self, **kwargs):
         integ = LambdaIntegration()
 
-        resp = integ.run_lambda(**kwargs)
+        evt = integ.get_event(**kwargs)
+        resp = self.lambda_builder.run_lambda(integ.get_called_lambda(), evt)
         return integ.parse_response(resp)
 
-    def add_method(self, app: WebsiteApp, endpoint: TomcruEndpointDescriptor, lambda_fn: str):
+    def add_method(self, app: EmeWebApi, endpoint: TomcruEndpointDescriptor):
         # replace AWS APIGW route scheme to flask routing schema
         _api_route = endpoint.route.replace('{', '<').replace('}', '>')
         app._custom_routes[endpoint.endpoint_id].add(_api_route)
+
+    def load_eme_handlers(self, app, _controllers):
+        # add api index controller
+        webcfg = {"__index__": "Home:get_index"}
+        _controllers['Home'] = HomeController(app)
+
+        # @TODO: @later: add swagger pages? generate them or what?
+        app.load_controllers(_controllers, {})
+
+        # include custom controllers
+        _app_path = os.path.join(self.cfg.app_path, 'controllers')
+        if os.path.exists(_app_path):
+            app.load_controllers(load_handlers(app, 'Controller', path=_app_path), webcfg)
+

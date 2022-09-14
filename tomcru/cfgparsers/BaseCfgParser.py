@@ -2,7 +2,7 @@ import os
 
 from eme.entities import load_settings
 
-from tomcru.core import TomcruCfg, TomcruRouteDescriptor, TomcruEndpointDescriptor, TomcruApiDescriptor
+from tomcru import TomcruCfg, TomcruRouteDescriptor, TomcruEndpointDescriptor, TomcruApiDescriptor
 
 
 class BaseCfgParser:
@@ -11,8 +11,8 @@ class BaseCfgParser:
         self.name = name
         self.cfg: TomcruCfg = None
 
-    def create_cfg(self, path: str):
-        self.cfg = TomcruCfg(path)
+    def create_cfg(self, path: str, pck_path):
+        self.cfg = TomcruCfg(path, pck_path)
 
     def add_eme_routes(self, api_name, integration=None, check_files=False):
         from eme.entities import load_settings
@@ -22,6 +22,14 @@ class BaseCfgParser:
 
         # list lambdas
         for group, api in r.items():
+
+            if integration:
+                _api_type = integration
+                if _api_type == 'rest':
+                    raise Exception("HTTPv1 not supported")
+                self.cfg.apis.setdefault(api_name, TomcruApiDescriptor(api_name, _api_type))
+
+                cfg_api_ = self.cfg.apis[api_name]
 
             print("Processing " + group)
             for endpoint, (lamb, layers) in api.items():
@@ -48,14 +56,10 @@ class BaseCfgParser:
                     layers = layers.pop(0)
                 self.cfg.lambdas.add((group, lamb, tuple(layers)))
 
-                _api_type = integration
-                if _api_type == 'rest':
-                    raise Exception("HTTPv1 not supported")
-
                 # add Api Gateway integration
-                self.cfg.apis.setdefault(api_name, TomcruApiDescriptor(api_name, _api_type))
-                self.cfg.apis[api_name].routes.setdefault(TomcruRouteDescriptor(route, group, api_name))
-                self.cfg.apis[api_name].routes[route].add_endpoint(TomcruEndpointDescriptor(group, route, method, lamb, role, layers))
+                if integration:
+                    cfg_api_.routes.setdefault(route, TomcruRouteDescriptor(route, group, api_name))
+                    cfg_api_.routes[route].add_endpoint(TomcruEndpointDescriptor(group, route, method, lamb, role, layers))
 
     def add_openapi_routes(self, api_name, integration=None, check_files=False):
         from openapi_parser import parse

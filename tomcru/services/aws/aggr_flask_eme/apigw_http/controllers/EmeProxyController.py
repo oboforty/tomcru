@@ -17,8 +17,7 @@ class EmeProxyController:
 
     # used for eme fetching routes to method
     def __dir__(self):
-        raise NotImplementedError()
-        #return {method: self.add_method for method in self.methods.keys()}
+        return {method: self.general_method for method in self.methods}
 
-    def add_method(self, endpoint, lambda_fn):
+    def add_method(self, endpoint, lambda_fn=None):
         self.methods[endpoint.method_name] = lambda_fn

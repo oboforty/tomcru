@@ -1,9 +1,7 @@
 import os
-from tomcru import TomCruProject
+from tomcru import TomcruProject
 
-project = TomCruProject(os.path.dirname(os.path.realpath(__file__)))
+project = TomcruProject(os.path.dirname(os.path.realpath(__file__)))
 
-with project.project_builder('petstore') as tc:
-    tc.add_openapi_routes('petstore', integration='http')
-
-project.build_app('sam')
+with project.project_builder('test api') as tc:
+    tc.add_eme_routes('test', integration='http')
