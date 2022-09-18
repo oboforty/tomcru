@@ -7,7 +7,8 @@ from tomcru import TomcruApiDescriptor, TomcruProject, TomcruEndpointDescriptor,
 from .apps.EmeWebApi import EmeWebApi
 from .controllers.EmeProxyController import EmeProxyController
 from .controllers.HomeController import HomeController
-from .integration.lambda_integ import LambdaIntegration
+from .integration.LambdaIntegration import LambdaIntegration
+from .integration.AuthorizerIntegration import AuthorizerIntegration
 
 
 class ApiBuilder:
@@ -20,7 +21,11 @@ class ApiBuilder:
         self.lambda_builder = self.p.serv('aws:onpremise:lambda_b')
 
     def build_api(self, api_name, api: TomcruApiDescriptor) -> EmeWebApi:
-        app = EmeWebApi(self.cfg, self.apigw_cfg)
+        # build eme app object
+        apiopts = self.apigw_cfg.get('__default__', {})
+        apiopts.update(self.apigw_cfg.get(api_name, {}))
+
+        app = EmeWebApi(self.cfg, apiopts)
 
         # build authorizers
 
@@ -67,7 +72,7 @@ class ApiBuilder:
         _controllers['Home'] = HomeController(app)
 
         # @TODO: @later: add swagger pages? generate them or what?
-        app.load_controllers(_controllers, {})
+        app.load_controllers(_controllers, webcfg)
 
         # include custom controllers
         _app_path = os.path.join(self.cfg.app_path, 'controllers')

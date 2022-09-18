@@ -18,6 +18,7 @@ class TomcruProject:
         self.services = {}
         self.appbuilders = {}
         self.active_cfg = None
+        self.env = None
 
     @property
     def cfg(self) -> TomcruCfg:
@@ -47,6 +48,7 @@ class TomcruProject:
     def build_app(self, app_type, env,  **kwargs):
         app_type, app_implement = app_type.split(':')
         path = os.path.join(self.cfg.pck_path, 'appbuilders', app_type.lower())
+        self.env = env
         app_builder = load_serv(path, app_implement).app_builder(self, env, **kwargs)
 
         if not hasattr(app_builder, 'build_app'):
@@ -78,7 +80,11 @@ class TomcruProject:
 
         # guess interface type
         if hasattr(srv, 'create_builder'):
-            builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, implement, service+'.ini')
+            builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, self.env, service, implement+'.ini')
+            if not os.path.exists(builder_cfg_file):
+                # try loading cfg without env
+                builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, service, implement + '.ini')
+
             builder_cfg = load_settings(builder_cfg_file)
 
             obj = srv.create_builder(self, builder_cfg)

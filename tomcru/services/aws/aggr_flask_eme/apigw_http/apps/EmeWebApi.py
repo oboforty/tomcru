@@ -15,6 +15,11 @@ class EmeWebApi(Flask, WebsiteAppBase):
             }
         })
 
+        self.host = cfg.get('host')
+        self.port = int(cfg.get('port', 5000))
+        self.api_name = f"Api:{self.port}"
+        self.is_main_thread = cfg.get('main_api', False)
+
         self.boto3 = None
 
     def start(self):
