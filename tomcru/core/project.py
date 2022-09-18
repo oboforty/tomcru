@@ -86,6 +86,7 @@ class TomcruProject:
                 builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, service, implement + '.ini')
 
             builder_cfg = load_settings(builder_cfg_file)
+            builder_cfg.conf['__cfg__'] = os.path.dirname(builder_cfg_file)
 
             obj = srv.create_builder(self, builder_cfg)
         else:

@@ -1,8 +1,9 @@
+import json
 import os
 
 from eme.entities import load_handlers
 
-from tomcru import TomcruApiDescriptor, TomcruProject, TomcruEndpointDescriptor, TomcruRouteDescriptor
+from tomcru import TomcruApiDescriptor, TomcruProject, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruApiLambdaAuthorizerDescriptor
 
 from .apps.EmeWebApi import EmeWebApi
 from .controllers.EmeProxyController import EmeProxyController
@@ -55,10 +56,41 @@ class ApiBuilder:
         return app
 
     def on_request(self, **kwargs):
-        integ = LambdaIntegration()
+        # @todo: support multiple apis. for now we fetch the first api
+        # @todo: support multiple integrations. for now we assume it's always lambda
+
+        # @TODO: rewrite this with services?
+        api = next(iter(self.cfg.apis.values()))
+        integ = LambdaIntegration(api)
 
         evt = integ.get_event(**kwargs)
-        resp = self.lambda_builder.run_lambda(integ.get_called_lambda(), evt)
+
+        if integ.endpoint.auth:
+            auth_cfg: TomcruApiLambdaAuthorizerDescriptor = self.cfg.authorizers[integ.endpoint.auth]
+            # todo: support multiple authorizers. for now we assume it's lambda authorizer
+            # authorizer integration
+            auth_integ = AuthorizerIntegration()
+
+            if 'external' == auth_cfg.lambda_source:
+                try:
+                    auth_resp_fn = self.apigw_cfg['__authorizer_mock__'].get(integ.endpoint.auth)
+
+                    with open(os.path.join(self.apigw_cfg['__cfg__'], auth_resp_fn)) as fh:
+                        auth_resp = json.load(fh)
+                except Exception as e:
+                    print(e)
+                    # todo: what if there's no mock for external lambda auth? execute lambda directly from AWS?
+
+            elif 'internal' == auth_cfg.lambda_source:
+                # todo: Finish this
+                auth_evt = auth_integ.get_authorizer_event(evt)
+                auth_resp = self.lambda_builder.run_lambda(auth_cfg.lambda_id, auth_evt)
+            else:
+                raise Exception("asd")
+
+            auth_integ.inject_event(evt, auth_resp)
+
+        resp = self.lambda_builder.run_lambda(integ.endpoint.lambda_id, evt)
         return integ.parse_response(resp)
 
     def add_method(self, app: EmeWebApi, endpoint: TomcruEndpointDescriptor):

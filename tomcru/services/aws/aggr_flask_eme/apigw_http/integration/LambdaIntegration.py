@@ -1,19 +1,22 @@
 import json
+
 from eme.entities import EntityJSONEncoder
 
 from flask import request
 
+from tomcru import TomcruApiDescriptor, TomcruLambdaIntegrationDescription
+
 
 class LambdaIntegration:
 
-    def get_event(self, **kwargs):
-        lamb = self.get_called_lambda()
-        method = lamb.split('_')[0]
+    def __init__(self, api: TomcruApiDescriptor):
+        self.endpoint = self.get_called_endpoint(api)
 
+    def get_event(self, **kwargs):
         event = {
             'requestContext': {
                 "http": {
-                    "method": method
+                    "method": self.endpoint.method_name
                 },
             },
             'body': request.data,
@@ -29,7 +32,10 @@ class LambdaIntegration:
         # parse response
         if isinstance(resp, dict):
             if 'body' in resp:
-                body = json.dumps(resp['body'])
+                try:
+                    body = json.dumps(resp['body'])
+                except:
+                    body = resp['body']
                 statusCode = resp.get('statusCode', 200)
             else:
                 body = json.dumps(resp, cls=EntityJSONEncoder)
@@ -42,6 +48,26 @@ class LambdaIntegration:
         return body, statusCode
 
     def get_called_lambda(self):
-        lamb = request.endpoint
-        lamb = lamb.split(':')[1] if ':' in lamb else lamb
-        return lamb
+        """
+        Gets called lambda ID
+        :return:
+        """
+        ep = request.endpoint
+
+        group, method_name = ep.split(':')
+        method, lamb = method_name.split("_")
+
+        return f'{group}/{lamb}'
+
+    def get_called_endpoint(self, api: TomcruApiDescriptor) -> TomcruLambdaIntegrationDescription:
+        """
+        Gets called endpoint in Tomcru cfg descriptors
+        :return:
+        """
+        route = api.routes[str(request.url_rule)]
+        endpoint = next(filter(lambda x: x.endpoint_id == request.endpoint, route.endpoints), None)
+
+        # todo: handle multiple integration types
+        assert isinstance(endpoint, TomcruLambdaIntegrationDescription)
+
+        return endpoint

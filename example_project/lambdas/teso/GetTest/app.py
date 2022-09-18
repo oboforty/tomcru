@@ -1,4 +1,6 @@
 
 
 def handler(event, context):
-    return event
+    return {
+        "event": event
+    }

@@ -1,0 +1,10 @@
+{
+  "isAuthorized": true,
+  "context": {
+    "admin": "true",
+    "principalId": "me",
+    "access_token": "test",
+    "uid": "00000000-0000-0000-0000-000000000000",
+    "username": "testuser"
+  }
+}

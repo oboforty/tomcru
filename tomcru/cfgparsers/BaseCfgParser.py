@@ -2,8 +2,8 @@ import os
 
 from eme.entities import load_settings
 
-from core.cfg import TomcruLambdaIntegrationDescription, TomcruApiAuthorizerDescriptor
-from tomcru import TomcruCfg, TomcruRouteDescriptor, TomcruEndpointDescriptor, TomcruApiDescriptor, TomcruApiLambdaAuthorizerDescriptor
+from tomcru import TomcruCfg, TomcruRouteDescriptor, TomcruEndpointDescriptor, TomcruApiDescriptor, \
+    TomcruApiLambdaAuthorizerDescriptor, TomcruLambdaIntegrationDescription, TomcruApiAuthorizerDescriptor
 
 
 class BaseCfgParser:
@@ -15,8 +15,6 @@ class BaseCfgParser:
     def create_cfg(self, path: str, pck_path):
         self.cfg = TomcruCfg(path, pck_path)
 
-        self.parse_project_apis()
-
     def parse_project_apis(self):
         """
         Parses api configuration in
@@ -24,17 +22,23 @@ class BaseCfgParser:
         """
 
         path = f'{self.cfg.app_path}/cfg/apis'
+
+        routes = []
+
         for root, dirs, files in os.walk(path):
             for file in files:
                 if file.endswith('routes.ini'):
                     # eme routing file
-                    self.add_eme_routes(os.path.join(path, file), 'http')
+                    routes.append(os.path.join(path, file))
                 elif file.endswith('.ini'):
                     # tomcru api config file
                     self.add_api_cfg(os.path.join(path, file))
                 elif file.endswith('.yaml') or file.endswith('.yml'):
                     # swagger file
                     pass
+
+        for routecfg in routes:
+            self.add_eme_routes(routecfg, 'http', check_files = True)
 
     def add_api_cfg(self, file):
         r = load_settings(file, delimiters=('=',)).conf
@@ -50,12 +54,12 @@ class BaseCfgParser:
 
         # list lambdas
         for api_name, cfg in r.items():
-            cfg = cfg_all_.copy().update(cfg)
-
             _api_type = cfg.get('type', 'http')
-            cfg_api_ = self.cfg.apis.setdefault(api_name, TomcruApiDescriptor(api_name, _api_type))
-
             print(f"Processing api: {api_name}")
+
+            cfg = {**cfg_all_, **cfg}
+            #cfg_api_ = self.cfg.apis.setdefault(api_name, TomcruApiDescriptor(api_name, _api_type))
+            cfg_api_ = self.cfg.apis[api_name] = TomcruApiDescriptor(api_name, _api_type)
 
             # map ini to tomcru descriptor
             cfg_api_.swagger_enabled = cfg.get('swagger_enabled', False)
@@ -77,17 +81,17 @@ class BaseCfgParser:
             cfg_api_ = self.cfg.apis.setdefault(api_name, TomcruApiDescriptor(api_name, _api_type))
 
             print(f"Processing routes: {api_name}")
-            for endpoint, *integ_opts in api.items():
+            for endpoint, integ_opts in api.items():
                 if endpoint.startswith('#'):
                     # ignore comments
                     continue
 
                 method, route = endpoint.split(' ')
 
-                endpoint_integ = self.get_integ(integ_opts, check_files, group, route, method)
+                endpoint_integ = self.get_integ(api_name, integ_opts, check_files, route, method)
 
                 # add Api Gateway integration
-                cfg_api_.routes.setdefault(route, TomcruRouteDescriptor(route, group, api_name))
+                cfg_api_.routes.setdefault(route, TomcruRouteDescriptor(endpoint_integ.route, endpoint_integ.group, api_name))
                 cfg_api_.routes[route].add_endpoint(endpoint_integ)
 
     def add_openapi_routes(self, api_name, integration=None, check_files=False):
@@ -115,45 +119,49 @@ class BaseCfgParser:
     def load_envs(self, env):
         self.cfg.envs = dict(load_settings(self.cfg.app_path+'/sam/cfg/'+env+'/envlist.ini').conf)
 
-    def get_integ(self, integ_opts, check_files: bool, group, route, method) -> TomcruEndpointDescriptor:
+    def get_integ(self, api_name, integ_opts, check_files: bool, route, method) -> TomcruEndpointDescriptor:
         """
 
         :param integ_opts:
         :param check_files:
-        :param group:
         :param route:
         :param method:
         :return:
         """
+        if isinstance(integ_opts, str):
+            integ_opts = [integ_opts]
         integ_type, integ_id = integ_opts[0].split(':')
 
+        apicfg = self.cfg.apis[api_name]
+
         if 'lambda' == integ_type or 'l' == integ_type:
-            auth = next(filter(lambda x: x.startswith('auth:'), integ_opts), None)
-            role = next(filter(lambda x: x.startswith('role:'), integ_opts), 'LambdaExecRole')
-            layers = next(filter(lambda x: x.startswith('layers:'), integ_opts), [])
-            # Lambda integration
-            integ = TomcruLambdaIntegrationDescription(group, route, method, integ_id, layers, role, auth)
+            group, lamb_name = integ_id.split('/')
+
+            auth = self._get_param(integ_opts, 'auth', apicfg.default_authorizer)
+            layers = self._get_param(integ_opts, 'layers', apicfg.default_layers)
+            role = self._get_param(integ_opts, 'role', apicfg.default_role)
+
+            # post parse layers
+            if isinstance(layers, str):
+                layers = layers.split("|")
+            if len(layers) > 0 and layers[0] == '': layers = layers.pop(0)
+            if not auth: auth = None
+
+            # override
 
             if check_files:
                 # check if files exist
-                if not os.path.exists(f'{self.cfg.app_path}/lambdas/{group}/{integ_id}'):
+                if not os.path.exists(f'{self.cfg.app_path}/lambdas/{group}/{lamb_name}'):
                     print("ERR: Lambda folder", group, integ_id, 'does not exist!')
                     #continue
                     return None
+
+            # Lambda integration
+            integ = TomcruLambdaIntegrationDescription(group, route, method, lamb_name, layers, role, auth)
         else:
             raise Exception(f"Integration {integ_type} not recognized!")
 
         return integ
-        # if len(grrr) == 4:
-        #     lamb, layers, role = grrr
-        # else:
-        # lamb, layers = grrr
-
-
-        layers = layers.split("|")
-        if layers[0] == '':
-            layers = layers.pop(0)
-        self.cfg.lambdas.add((group, lamb, tuple(layers)))
 
     def get_auth_integ(self, auth_id, integ_opt) -> TomcruApiAuthorizerDescriptor:
         auth_type, integ_opt = integ_opt.split(':')
@@ -164,3 +172,13 @@ class BaseCfgParser:
             return TomcruApiLambdaAuthorizerDescriptor(auth_id, lambda_id, lambda_source)
         else:
             pass
+        raise NotImplementedError(f"auth: {auth_type}")
+
+    def _get_param(self, integ_opts, param, default_val) -> str:
+        r = next(filter(lambda x: x.startswith(param+':'), integ_opts), ":").split(':')[1]
+
+        if not r:
+            # see if api config contains
+            r = default_val
+
+        return r
