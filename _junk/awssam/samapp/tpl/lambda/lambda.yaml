@@ -1,0 +1,6 @@
+  {name}:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: {name}
+      CodeUri: ./lambdas/{group}/{name}
+      Role: !Ref {role}

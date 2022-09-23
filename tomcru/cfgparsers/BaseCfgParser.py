@@ -164,6 +164,8 @@ class BaseCfgParser:
         return integ
 
     def get_auth_integ(self, auth_id, integ_opt) -> TomcruApiAuthorizerDescriptor:
+        if not integ_opt:
+            return None
         auth_type, integ_opt = integ_opt.split(':')
 
         if 'lambda' == auth_type or 'l' == auth_type:

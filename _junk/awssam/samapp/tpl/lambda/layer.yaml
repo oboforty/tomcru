@@ -1,0 +1,8 @@
+  {name}:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: "{name}"
+      ContentUri: ./layers/{file}.zip
+      CompatibleRuntimes:
+        - provided
+      LicenseInfo: 'Available under the MIT-0 license.'

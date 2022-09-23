@@ -1,16 +1,21 @@
 import json
+import os
+
 from eme.entities import EntityJSONEncoder
 
 from flask import request
 
+from .TomcruApiGWHttpIntegration import TomcruApiGWAuthorizerIntegration
+from tomcru import TomcruApiLambdaAuthorizerDescriptor
 
-class AuthorizerIntegration:
 
-    def get_authorizer_event_and_execute_lambda(self, event, lambda_builder):
-        if not self.authorizer:
-            return None
+class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
-        # @todo: get from cache
+    def __init__(self, cfg: TomcruApiLambdaAuthorizerDescriptor, auth_cfg, lambda_builder):
+        self.cfg = cfg
+        self.lambda_builder = lambda_builder
+
+    def get_authorizer_resp(self, evt: dict):
         user = None
 
         if not user:
@@ -60,9 +65,24 @@ class AuthorizerIntegration:
         lamb = lamb.split(':')[1] if ':' in lamb else lamb
         return lamb
 
-    def inject_event(self, event: dict, auth_resp: dict):
 
-        if auth_resp['isAuthorized']:
+
+class ExternalLambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
+    def __init__(self, cfg: TomcruApiLambdaAuthorizerDescriptor, apigw_cfg: dict):
+        self.cfg = cfg
+
+        filepath = apigw_cfg['__authorizer_mock__'].get(cfg.auth_id)
+
+        auth_resp_path = apigw_cfg['__fileloc__']
+        with open(os.path.join(filepath, auth_resp_path)) as fh:
+            self.auth_resp = json.load(fh)
+
+    def get_authorizer_resp(self, event: dict):
+
+        if self.auth_resp['isAuthorized']:
             event['requestContext']['authorizer'] = {
-                'lambda': auth_resp['context'].copy()
+                'lambda': self.auth_resp['context'].copy()
             }
+
+            return True
+        return False

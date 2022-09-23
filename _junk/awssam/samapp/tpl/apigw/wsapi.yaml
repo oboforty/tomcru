@@ -1,0 +1,30 @@
+  {name}:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: {name}
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: "$request.body.route"
+  WsAuthorizer{name}:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      Name: WsAuthorizer-{name}
+      ApiId: !Ref {name}
+      AuthorizerType: REQUEST
+      AuthorizerUri: !Join ["", ["arn:aws:apigateway:", Ref: "AWS::Region",":lambda:path/2015-03-31/functions/", Ref: "AuthorizerArn", "/invocations"]]
+      AuthorizerCredentialsArn: !Ref LambdaAccessRole
+      IdentitySource:
+        - "route.request.querystring.authorization"
+        - "route.request.header.authorization"
+  {name}Deployment:
+      Type: AWS::ApiGatewayV2::Deployment
+      Properties:
+        ApiId: !Ref {name}
+        #DependsOn: #{api_routenames}
+        #  - ConnectRoute
+  {name}Stage:
+      Type: AWS::ApiGatewayV2::Stage
+      Properties:
+        StageName: v1
+        Description: Version 1 'stage'
+        DeploymentId: !Ref {name}Deployment
+        ApiId: !Ref {name}

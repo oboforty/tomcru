@@ -1,0 +1,10 @@
+              x-amazon-apigateway-integration:
+                type: "aws_proxy"
+                httpMethod: "POST"
+                uri: !GetAtt '{lamb}.Arn'
+                credentials: !Ref LambdaAccessRole
+                timeoutInMillis: 3000
+                payloadFormatVersion: "2.0"
+                {params}
+              security:
+              - doorsOAuth2: []

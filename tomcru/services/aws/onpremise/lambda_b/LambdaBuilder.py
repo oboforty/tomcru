@@ -15,6 +15,8 @@ class LambdaBuilder:
         self.opts = opts
         self.lambdas = {}
 
+        project.serv('')
+
     def build_lambda(self, endpoint: TomcruLambdaIntegrationDescription):
         if isinstance(endpoint, str):
 
@@ -48,6 +50,13 @@ class LambdaBuilder:
 
         # setup env variables
         self.set_env_for(lamb_id)
+
+        # setup layers
+        # @TODO: ITT
+        # todo         - tomcru utils: MyMetaFinder
+        # todo         - tomcru utils: lib replacer
+        # todo         - boto3 inject service
+        # todo         - inject layers (here)
 
         # execute
         try:

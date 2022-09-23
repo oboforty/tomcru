@@ -4,7 +4,7 @@ from eme.entities import load_settings
 
 from tomcru import TomcruCfg
 from ..cfgparsers.BaseCfgParser import BaseCfgParser
-from .utils import load_serv
+from .modloader import load_serv
 
 
 class TomcruProject:
@@ -64,31 +64,38 @@ class TomcruProject:
     def load_serv(self, name, srv=None):
         n = name.split(':')
         if len(n) == 3:
-            vendor, implement, service = n
+            vendor, aim, service = n
         elif len(n) == 2:
             vendor, service = n
-            implement = 'default'
+            aim = 'default'
         else:
             raise Exception("No, don’t let him gonna, no don’t wanna")
 
         if srv is None:
-            search_path = os.path.join(self.cfg.pck_path, 'services', vendor, implement)
+            search_path = os.path.join(self.cfg.pck_path, 'services', vendor, aim)
             srv = load_serv(search_path, service)
 
             if srv is None:
-                raise Exception(f"Service {vendor}/{implement}:{service} not found! Search path: {search_path}")
+                raise Exception(f"Service {vendor}/{aim}:{service} not found! Search path: {search_path}")
 
         # guess interface type
         if hasattr(srv, 'create_builder'):
-            builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, self.env, service, implement+'.ini')
+            builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, self.env, service, aim+'.ini')
             if not os.path.exists(builder_cfg_file):
                 # try loading cfg without env
-                builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, service, implement + '.ini')
+                builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, service, aim + '.ini')
 
             builder_cfg = load_settings(builder_cfg_file)
-            builder_cfg.conf['__cfg__'] = os.path.dirname(builder_cfg_file)
+            builder_cfg.conf['__fileloc__'] = os.path.dirname(builder_cfg_file)
 
             obj = srv.create_builder(self, builder_cfg)
+
+            # imp = builder_cfg.get('__stack__.implementation')
+            # if imp:
+            #     # also load implementation
+            #     search_path = os.path.join(self.cfg.pck_path, 'services', vendor, aim, 'implementations', imp)
+            #     imp = load_serv(search_path, service)
+            #     obj.imp = imp.create_implementation(self, builder_cfg)
         else:
             obj = srv
 

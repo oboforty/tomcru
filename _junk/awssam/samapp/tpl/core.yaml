@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Serverless website'
+
+Parameters:
+  LambdaExecRole:
+    Type: String
+    Default: arn:aws:iam::636500095665:role/service-role/LambdaAccessDynamoDB
+  LambdaWsRole:
+    Type: String
+    Default: arn:aws:iam::636500095665:role/service-role/testff-role-gv75bbti
+  LambdaAccessRole:
+    Type: String
+    Default: arn:aws:iam::636500095665:role/APIGatewayAccessLambda
+  AuthorizerArn:
+    Type: String
+    Default: arn:aws:lambda:eu-central-1:636500095665:function:DoorsCachedAuthorizer
+  DkgsDalLayerArn:
+    Type: String
+    Default: arn:aws:lambda::636500095665:layer:DkgsDal
+Globals:
+  Function:
+    AutoPublishAlias: live
+    Handler: app.handler
+    Runtime: python3.9
+    Timeout: 120
+    MemorySize: 128
+    Architectures:
+      - arm64
+
+Resources:

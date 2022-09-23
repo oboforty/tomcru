@@ -1,0 +1,21 @@
+  {route_raw}Route:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref {api_name}
+      RouteKey: {route}
+      {authorization}
+      OperationName: {route_raw}Route
+      Target: !Join
+        - '/'
+        - - 'integrations'
+          - !Ref {route_raw}Integ
+  {route_raw}Integ:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref {api_name}
+      IntegrationType: AWS_PROXY
+      IntegrationUri:
+        Fn::Sub:
+            arn:aws:apigateway:${{AWS::Region}}:lambda:path/2015-03-31/functions/${{{lamb}.Arn}}/invocations
+      CredentialsArn: !Ref LambdaAccessRole
+      TimeoutInMillis: 3000

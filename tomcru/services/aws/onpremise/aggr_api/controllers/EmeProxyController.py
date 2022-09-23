@@ -1,9 +1,9 @@
 
 class EmeProxyController:
-    def __init__(self, group, fn_callback):
+    def __init__(self, group, on_request):
         self.group = group
         self.methods = {}
-        self.general_method = fn_callback
+        self.on_request = on_request
 
     def __getattr__(self, item):
         if item == 'group':
@@ -13,11 +13,11 @@ class EmeProxyController:
         elif item == 'methods':
             return self.methods
 
-        return self.general_method
+        return self.on_request
 
     # used for eme fetching routes to method
     def __dir__(self):
-        return {method: self.general_method for method in self.methods}
+        return {method: self.on_request for method in self.methods}
 
-    def add_method(self, endpoint, lambda_fn=None):
-        self.methods[endpoint.method_name] = lambda_fn
+    def add_method(self, endpoint, fn):
+        self.methods[endpoint.method_name] = fn

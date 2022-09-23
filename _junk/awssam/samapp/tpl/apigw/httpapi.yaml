@@ -1,0 +1,23 @@
+  {name}:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: v1
+      DefinitionBody:
+        openapi: '3.0.1'
+        info:
+          title: {name}
+        components:
+          securitySchemes:
+            doorsOAuth2:
+              type: apiKey
+              name: "Authorization"
+              in: "header"
+              x-amazon-apigateway-authorizer:
+                type: request
+                identitySource: "$request.header.Authorization"
+                authorizerUri: !Join ["", ["arn:aws:apigateway:", Ref: "AWS::Region",":lambda:path/2015-03-31/functions/", Ref: "AuthorizerArn", "/invocations"]]
+                #authorizerResultTtlInSeconds : 3600
+                authorizerPayloadFormatVersion: 2.0
+                enableSimpleResponses: true
+                authorizerCredentials: !Ref LambdaAccessRole
+        paths:

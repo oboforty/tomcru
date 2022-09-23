@@ -4,13 +4,31 @@ from eme.entities import EntityJSONEncoder
 
 from flask import request
 
-from tomcru import TomcruApiDescriptor, TomcruLambdaIntegrationDescription
+from tomcru import TomcruApiDescriptor, TomcruLambdaIntegrationDescription, TomcruEndpointDescriptor
+
+from .TomcruApiGWHttpIntegration import TomcruApiGWHttpIntegration
+from .AuthorizerIntegration import LambdaAuthorizerIntegration
 
 
-class LambdaIntegration:
+class LambdaIntegration(TomcruApiGWHttpIntegration):
 
-    def __init__(self, api: TomcruApiDescriptor):
-        self.endpoint = self.get_called_endpoint(api)
+    def __init__(self, endpoint: TomcruLambdaIntegrationDescription, auth: LambdaAuthorizerIntegration, lambda_builder):
+        self.endpoint = endpoint
+        self.auth_integ = auth
+        self.lambda_builder = lambda_builder
+
+    def on_request(self, **kwargs):
+        evt = self.get_event(**kwargs)
+
+        # @todo: cache authorizer response
+        if self.auth_integ.authorize(evt):
+            resp = self.lambda_builder.run_lambda(self.endpoint.lambda_id, evt)
+
+            return self.parse_response(resp)
+        else:
+            # todo: handle unauthenticated
+            pass
+            raise Exception("asdasd")
 
     def get_event(self, **kwargs):
         event = {
@@ -29,6 +47,11 @@ class LambdaIntegration:
         return event
 
     def parse_response(self, resp: dict):
+        """
+        Parses HTTP lambda integration's response to flask response
+        :param resp: lambda integration response (2.0 format)
+        :return: output_str, status_code
+        """
         # parse response
         if isinstance(resp, dict):
             if 'body' in resp:
@@ -46,28 +69,3 @@ class LambdaIntegration:
             #body, statusCode = resp.get('body', ''), resp.get('statusCode', 200)
 
         return body, statusCode
-
-    def get_called_lambda(self):
-        """
-        Gets called lambda ID
-        :return:
-        """
-        ep = request.endpoint
-
-        group, method_name = ep.split(':')
-        method, lamb = method_name.split("_")
-
-        return f'{group}/{lamb}'
-
-    def get_called_endpoint(self, api: TomcruApiDescriptor) -> TomcruLambdaIntegrationDescription:
-        """
-        Gets called endpoint in Tomcru cfg descriptors
-        :return:
-        """
-        route = api.routes[str(request.url_rule)]
-        endpoint = next(filter(lambda x: x.endpoint_id == request.endpoint, route.endpoints), None)
-
-        # todo: handle multiple integration types
-        assert isinstance(endpoint, TomcruLambdaIntegrationDescription)
-
-        return endpoint
