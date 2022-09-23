@@ -1,23 +1,6 @@
 from ..services.dal.boto3 import Boto3
 b3: Boto3
 
-class Boto3Loader(Loader):
-    def __init__(self, filename):
-        self.filename = filename
-
-    def create_module(self, spec):
-        global b3
-        return b3
-
-    def exec_module(self, module):
-        return
-        with open(self.filename) as f:
-            data = f.read()
-
-        # manipulate data some way...
-
-        exec(data, vars(module))
-
 _registered_finders = []
 
 def install(app, app_path, layers):

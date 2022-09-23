@@ -21,7 +21,7 @@ class TomcruEndpointDescriptor:
         return f'{self.method.upper()} {self.route} => {self.integ_id}'
 
     def __hash__(self):
-        return self.endpoint_id
+        return hash(self.endpoint_id)
 
     @property
     def endpoint_id(self):

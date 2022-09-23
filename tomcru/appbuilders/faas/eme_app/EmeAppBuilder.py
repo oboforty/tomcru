@@ -14,11 +14,9 @@ class EmeAppBuilder:
     def build_app(self, env):
         self.env = env
 
-        self.p.serv('aws:local_mock:boto3_b').inject_boto()
-
         for api_name, api in self.cfg.apis.items():
             api.api_name = api_name
-            app = self.p.serv(f'aws:aggr_flask_eme:apigw_{api.api_type}').build_api(api_name, api)
+            app = self.p.serv('aws:onpremise:aggr_api').build_api(api_name, api)
 
             self.apis.append(app)
 

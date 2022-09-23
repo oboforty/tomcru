@@ -15,7 +15,10 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         self.cfg = cfg
         self.lambda_builder = lambda_builder
 
-    def get_authorizer_resp(self, evt: dict):
+        self.lambda_folder = cfg.lambda_source
+        self.lambda_name = cfg.lambda_id
+
+    def authorize(self, evt: dict):
         user = None
 
         if not user:
@@ -74,10 +77,10 @@ class ExternalLambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         filepath = apigw_cfg['__authorizer_mock__'].get(cfg.auth_id)
 
         auth_resp_path = apigw_cfg['__fileloc__']
-        with open(os.path.join(filepath, auth_resp_path)) as fh:
+        with open(os.path.join(auth_resp_path, filepath)) as fh:
             self.auth_resp = json.load(fh)
 
-    def get_authorizer_resp(self, event: dict):
+    def authorize(self, event: dict):
 
         if self.auth_resp['isAuthorized']:
             event['requestContext']['authorizer'] = {

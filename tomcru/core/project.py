@@ -20,6 +20,8 @@ class TomcruProject:
         self.active_cfg = None
         self.env = None
 
+        self.debug_builders = False
+
     @property
     def cfg(self) -> TomcruCfg:
         return self.cfgs[self.active_cfg]
@@ -80,13 +82,16 @@ class TomcruProject:
 
         # guess interface type
         if hasattr(srv, 'create_builder'):
-            builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, self.env, service, aim+'.ini')
+            builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, self.env, aim, service+'.ini')
             if not os.path.exists(builder_cfg_file):
                 # try loading cfg without env
-                builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, service, aim + '.ini')
+                builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, aim, service + '.ini')
 
             builder_cfg = load_settings(builder_cfg_file)
             builder_cfg.conf['__fileloc__'] = os.path.dirname(builder_cfg_file)
+
+            if self.debug_builders:
+                print(name, '->', builder_cfg_file)
 
             obj = srv.create_builder(self, builder_cfg)
 

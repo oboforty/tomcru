@@ -15,8 +15,6 @@ class LambdaBuilder:
         self.opts = opts
         self.lambdas = {}
 
-        project.serv('')
-
     def build_lambda(self, endpoint: TomcruLambdaIntegrationDescription):
         if isinstance(endpoint, str):
 

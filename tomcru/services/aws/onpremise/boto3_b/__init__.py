@@ -1,3 +1,3 @@
+from .Boto3Builder import Boto3Builder
 
-def inject_boto():
-    print("BOTO3: @TODO")
+create_builder = Boto3Builder

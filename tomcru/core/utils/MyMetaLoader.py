@@ -8,15 +8,18 @@ from importlib import import_module
 
 class MyMetaFinder(MetaPathFinder):
 
-    def __init__(self, keywords, paths, cls=None):
+    def __init__(self, keywords, paths, injected_obj=None):
         if not isinstance(keywords, set):
-            keywords = set([keywords])
+            keywords: set = {keywords}
         if not isinstance(paths, list):
             paths = [paths]
 
-        self.keywords = keywords
-        self.paths = paths
-        self._cls = cls
+        self.keywords: set = keywords
+        self.paths: list = paths
+        self.injected_obj = injected_obj
+
+        if self.injected_obj and isinstance(self.paths, list) and len(self.paths) > 1:
+            raise NotImplementedError("If you provide an injectable object, please provide a single path")
 
     def find_spec(self, fullname, path, target=None):
         if self.keywords:
@@ -45,22 +48,41 @@ class MyMetaFinder(MetaPathFinder):
                 # shouldn't happen
                 return None
 
-            _loader = self._cls(filename) if self._cls else None
+            _loader = MyLoader(filename, self.injected_obj) if self.injected_obj else None
             return spec_from_file_location(fullname, filename, loader=_loader, submodule_search_locations=submodule_locations)
+
+
+class MyLoader(Loader):
+    def __init__(self, filename, injectable):
+        self.filename = filename
+        self.injectable = injectable
+
+    def create_module(self, spec):
+        return self.injectable
+
+    def exec_module(self, module):
+        return
+        # with open(self.filename) as f:
+        #     data = f.read()
+        #
+        # # manipulate data some way...
+        #
+        # exec(data, vars(module))
 
 _registered_finders = []
 
 
-def inject(service_filter_keywords, service_paths):
+def inject(service_filter_keywords, service_paths, injectable=None):
     """
     Injects requested module
 
     :param service_filter_keywords: list or str of keyword(s) that serve as filter logic to import modules
     :param service_paths: list or str of path to module that replaces dependency
+    :param injectable: if provided, this object will be imported instead of built-in path-based Loader
     """
     global _registered_finders
 
-    sys.meta_path.insert(0, f := MyMetaFinder(service_filter_keywords, service_paths))
+    sys.meta_path.insert(0, f := MyMetaFinder(service_filter_keywords, service_paths, injectable))
     _registered_finders.append(f)
 
 

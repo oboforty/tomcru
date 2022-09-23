@@ -3,8 +3,6 @@ from typing import Dict
 from tomcru import TomcruApiDescriptor, TomcruProject, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruApiLambdaAuthorizerDescriptor, TomcruApiAuthorizerDescriptor, TomcruLambdaIntegrationDescription
 from tomcru.core import utils
 
-#from flask import request
-
 from .controllers.EmeProxyController import EmeProxyController
 from .integration.LambdaIntegration import LambdaIntegration
 from .integration.AuthorizerIntegration import LambdaAuthorizerIntegration, ExternalLambdaAuthorizerIntegration
@@ -31,8 +29,9 @@ class ApiBuilder:
         apiopts = self.apigw_cfg.get('__default__', {})
         apiopts.update(self.apigw_cfg.get(api_name, {}))
 
-        app_type = apiopts['app_type']
-        if 'eme-flask' == app_type:
+        # todo: @LATER: decide between implementation detail, e.g. fastapi | flask | eme-flask
+        #app_type = apiopts['app_type']
+        if 'http' == api.api_type:
             self.imp = EmeWebAppIntegrator(self.p, self.apigw_cfg)
             app = self.imp.create_app(apiopts)
         else:
@@ -56,10 +55,8 @@ class ApiBuilder:
                 # evaluate lambda sub type
                 if 'external' == auth.lambda_source:
                     self.authorizers[authorizer_id] = ExternalLambdaAuthorizerIntegration(auth, self.apigw_cfg)
-                elif 'internal' == auth.lambda_source:
-                    self.authorizers[authorizer_id] = LambdaAuthorizerIntegration(auth, self.apigw_cfg, self.lambda_builder)
                 else:
-                    raise Exception("Incorrect lambda source: " + auth.lambda_source)
+                    self.authorizers[authorizer_id] = LambdaAuthorizerIntegration(auth, self.apigw_cfg, self.lambda_builder)
 
             else:
                 # todo: implement IAM and jwt
@@ -78,15 +75,24 @@ class ApiBuilder:
             endpoint: TomcruLambdaIntegrationDescription
             for endpoint in ro.endpoints:
                 auth = self.authorizers[endpoint.auth] if endpoint.auth else None
-                # todo: how to evaluate integration type? for now we assume it's always lambda
-                self.integrations[endpoint] = LambdaIntegration(endpoint, auth, self.lambda_builder)
 
-                # pass lambda fn to controller
+                _integration: TomcruApiGWHttpIntegration
+
+                if isinstance(endpoint, TomcruLambdaIntegrationDescription):
+                    # build lambda
+                    self.lambda_builder.build_lambda(endpoint)
+                    _integration = LambdaIntegration(endpoint, auth, self.lambda_builder)
+                else:
+                    # todo: for now we assume it's always lambda
+                    raise NotImplementedError()
+
+                # refer to integration (proxy controller refers to self.on_request)
+                self.integrations[endpoint] = _integration
+
+                # pass endpoint to proxy controller, so that it constructs correct routing (needed for eme apps)
                 _controllers[ro.group].add_method(endpoint, lambda x: NotImplementedError())
+                # app type dependent integration (eme-webapp | flask | fastapi | eme-websocket)
                 self.imp.add_method(endpoint)
-
-                #fn = self.lambda_builder.build_lambda(endpoint)
-                #_integ = LambdaIntegration(self.lambda_builder, endpoint, )
 
         return _controllers
 
@@ -97,7 +103,8 @@ class ApiBuilder:
 
         #self.boto3_injector.inject_boto3()
         # inject boto3
-        self.boto3_builder.build_boto3(self, self.imp)
+        boto3, boto3_path = self.boto3_builder.build_boto3(self.imp)
+        utils.inject('boto3', boto3_path, boto3)
 
         # inject layers
         if self.cfg.layers:

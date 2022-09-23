@@ -1,0 +1,22 @@
+{
+    "requestContext": {
+        "routeKey": "$default",
+        "messageId": "Vuvk6ff4FiACH8A=",
+        "eventType": "MESSAGE",
+        "extendedRequestId": "Vuvk6HceFiAFkPQ=",
+        "requestTime": "23/Jul/2022:17:14:45 +0000",
+        "messageDirection": "IN",
+        "stage": "production",
+        "connectedAt": 1658596484213,
+        "requestTimeEpoch": 1658596485613,
+        "identity": {"userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,like Gecko) Chrome/103.0.0.0 Safari/537.36","sourceIp": "79.122.79.194"},
+        "requestId": "Vuvk6HceFiAFkPQ=",
+        "domainName": "2kpo2k9b9l.execute-api.eu-central-1.amazonaws.com",
+        "connectionId": "Vuvksff1liACH8A=",
+        "apiId": "2kpo2k9b9l"
+    },
+
+    "body": "{\\"route\\": \\"sajt:kifli\\",
+         \\"hello\\": \\"teszomsz\\"}",
+         "isBase64Encoded": false
+}
