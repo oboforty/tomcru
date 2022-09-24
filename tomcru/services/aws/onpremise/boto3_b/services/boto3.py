@@ -5,9 +5,10 @@ from ..dal_ddb import build_database
 class Boto3:
     __TOMCRU__ = True
 
-    def __init__(self, app, app_path):
+    def __init__(self, app, app_path, db_descriptor):
         # build DDB adapter -- @todo: replace with test MOCK ?
-        sess, tables = build_database(app_path)
+        # todo: put it inside ddb onpremise builder
+        sess, tables = build_database(app_path, db_descriptor.conf)
         self.ddb = DdbSqlAlchemyAdapter(sess, tables)
         self.apigw = app
 

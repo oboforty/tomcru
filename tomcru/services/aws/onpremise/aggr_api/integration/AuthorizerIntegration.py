@@ -1,5 +1,6 @@
 import json
 import os
+from collections import defaultdict
 
 from eme.entities import EntityJSONEncoder
 
@@ -16,66 +17,54 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         self.lambda_builder = lambda_builder
 
         self.lambda_folder = cfg.lambda_source
-        self.lambda_name = cfg.lambda_id
-        self.env = None
+        self.lambda_id = cfg.lambda_id
+        self.env = env
 
-    def authorize(self, evt: dict):
-        user = None
+        self.lambda_builder.build_lambda(self.lambda_id, env=self.env)
+
+        self.authorizers_cache = {}
+
+    def authorize(self, event: dict):
+        auth_event = {
+            'requestContext': event['requestContext'].copy(),
+            'identitySource': event['headers'].get('authorization'),
+            'headers': event['headers'].copy()
+        }
+
+        # check if cached
+        cache_key = auth_event['identitySource']
+        user = self.authorizers_cache.get(cache_key) if cache_key else None
 
         if not user:
-            authorizer_name, authorizer_fn = self.authorizer
-            auth_event = {
-                'identitySource': event['headers'].get('authorization'),
-                'headers': event['headers'].copy()
-            }
-
-            # set env variables
-            if authorizer_name != '__MOCK__':
-                lambda_builder.set_env_for(authorizer_name)
-
-            # "set DEBUG=true"
-            # call authorizer if not cached
-            resp = authorizer_fn(auth_event, self)
+            resp = self.lambda_builder.run_lambda(self.lambda_id, auth_event, self.env)
 
             if resp.get('statusCode', 200) == 200:
                 user = resp['context']
             elif resp.get('isAuthorized'):
                 user = None
 
+                # todo: don't pass through? check aws docks
             if user:
-                # @todo: cache authorizer response
-                pass
+                # cache authorizer response
+                self.authorizers_cache[cache_key] = user
+
+        if user:
+            # integrate into event
+            event['requestContext']['authorizer'] = {
+                'lambda': user.copy()
+            }
 
         return user
-
-    def parse_response(self, resp: dict):
-        # parse response
-        if isinstance(resp, dict):
-            if 'body' in resp:
-                body = json.dumps(resp['body'])
-                statusCode = resp.get('statusCode', 200)
-            else:
-                body = json.dumps(resp, cls=EntityJSONEncoder)
-                statusCode = 200
-        else:
-            body = resp
-            statusCode = 200
-            #body, statusCode = resp.get('body', ''), resp.get('statusCode', 200)
-
-        return body, statusCode
-
-    def get_called_lambda(self):
-        lamb = request.endpoint
-        lamb = lamb.split(':')[1] if ':' in lamb else lamb
-        return lamb
 
 
 class ExternalLambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
     def __init__(self, cfg: TomcruApiLambdaAuthorizerDescriptor, apigw_cfg: dict):
         self.cfg = cfg
 
+        group, lamb = cfg.lambda_id.split('/')
+
         auth_resp_path = apigw_cfg['__fileloc__']
-        with open(os.path.join(auth_resp_path, cfg.lambda_id+'_mock.json')) as fh:
+        with open(os.path.join(auth_resp_path, lamb+'_mock.json')) as fh:
             self.auth_resp = json.load(fh)
 
     def authorize(self, event: dict):

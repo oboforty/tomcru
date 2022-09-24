@@ -82,17 +82,7 @@ class TomcruProject:
 
         # guess interface type
         if hasattr(srv, 'create_builder'):
-            builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, self.env, aim, service+'.ini')
-            if not os.path.exists(builder_cfg_file):
-                # try loading cfg without env
-                builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, aim, service + '.ini')
-
-            builder_cfg = load_settings(builder_cfg_file)
-            builder_cfg.conf['__fileloc__'] = os.path.dirname(builder_cfg_file)
-
-            if self.debug_builders:
-                print(name, '->', builder_cfg_file)
-
+            builder_cfg = self.load_serv_cfg(name)
             obj = srv.create_builder(self, builder_cfg)
 
             # imp = builder_cfg.get('__stack__.implementation')
@@ -105,3 +95,26 @@ class TomcruProject:
             obj = srv
 
         self.services[name] = obj
+
+    def load_serv_cfg(self, name):
+        n = name.split(':')
+        if len(n) == 3:
+            vendor, aim, service = n
+        elif len(n) == 2:
+            vendor, service = n
+            aim = 'default'
+        else:
+            raise Exception("No, don’t let him gonna, no don’t wanna")
+
+        builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, self.env, aim, service + '.ini')
+        if not os.path.exists(builder_cfg_file):
+            # try loading cfg without env
+            builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, aim, service + '.ini')
+
+        if self.debug_builders:
+            print(name, '->', builder_cfg_file)
+
+        builder_cfg = load_settings(builder_cfg_file)
+        builder_cfg.conf['__fileloc__'] = os.path.dirname(builder_cfg_file)
+
+        return builder_cfg

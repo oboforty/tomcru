@@ -36,7 +36,7 @@ class ApiBuilder:
         #app_type = apiopts['app_type']
         if 'http' == api.api_type:
             self.imp = EmeWebAppIntegrator(self.p, self.apigw_cfg)
-            app = self.imp.create_app(apiopts)
+            app = self.imp.create_app(api_name, apiopts)
         else:
             raise NotImplementedError()
 

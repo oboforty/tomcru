@@ -21,7 +21,7 @@ class Boto3Builder:
         """
 
         # @todo: later: apiGW service depends on individual API, but we should map api to ID (use global FaaSAppBuilder instead of ApiBuilder)
-        b = Boto3(apigw_app_wrapper, self.cfg.app_path)
+        b = Boto3(apigw_app_wrapper, self.cfg.app_path, self.boto3_cfg)
         _path = os.path.dirname(os.path.realpath(__file__))
 
         return b, os.path.join(_path, 'services')

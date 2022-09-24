@@ -17,8 +17,8 @@ class EmeWebAppIntegrator:
 
         self.app = None
 
-    def create_app(self, apiopts):
-        self.app = EmeWebApi(self.cfg, apiopts)
+    def create_app(self, api_name, apiopts):
+        self.app = EmeWebApi(self.cfg.apis[api_name], apiopts)
 
         return self.app
 
@@ -63,8 +63,9 @@ class EmeWebAppIntegrator:
     def get_called_endpoint(self) -> TomcruEndpointDescriptor:
         # @TODO: how to fetch right api?
         api = next(iter(self.cfg.apis.values()))
+        aws_url_rule = str(request.url_rule).replace('<', '{').replace('>', '}')
 
-        route = api.routes[str(request.url_rule)]
+        route = api.routes[aws_url_rule]
         endpoint = next(filter(lambda x: x.endpoint_id == request.endpoint, route.endpoints), None)
 
         return endpoint

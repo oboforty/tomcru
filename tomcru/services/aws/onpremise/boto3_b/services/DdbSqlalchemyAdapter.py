@@ -47,7 +47,7 @@ class DdbTableAdapter:
         self.session.add(ent)
         self.session.commit()
 
-        return {'Item': ent}
+        return {'Item': ent.ddb_content}
 
     def delete_item(self, Key, **kwargs):
         # check if already exists

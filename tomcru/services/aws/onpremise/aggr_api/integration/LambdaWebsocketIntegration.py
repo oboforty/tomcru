@@ -23,7 +23,6 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
     def on_request(self, **kwargs):
         evt = self.get_event(**kwargs)
 
-        # @todo: cache authorizer response
         if self.auth_integ.authorize(evt):
             resp = self.lambda_builder.run_lambda(self.endpoint.lambda_id, evt, self.env)
 

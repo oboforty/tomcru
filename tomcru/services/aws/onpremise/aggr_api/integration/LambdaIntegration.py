@@ -30,14 +30,15 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
             return self.parse_response(resp)
         else:
             # todo: handle unauthenticated
-            pass
-            raise Exception("asdasd")
+            raise Exception("Authorizer refused")
 
     def get_event(self, **kwargs):
         event = {
             'requestContext': {
+                "protocol": "HTTP/1.1",
+                "httpMethod": self.endpoint.method_name,
                 "http": {
-                    "method": self.endpoint.method_name
+                    "method": self.endpoint.method_name,
                 },
             },
             'body': request.data,

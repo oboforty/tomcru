@@ -216,10 +216,11 @@ class BaseCfgParser:
         if not os.path.exists(file_path):
             raise Exception(f"Define your envvars in the following directory structure: project/cfg/{vendor}/<env>/envvars/<filename>.ini")
 
-        self.cfg.envs[env] = dict(load_settings(file_path).conf)
+        self.cfg.envs[env].update(
+            dict(load_settings(file_path).conf)
+        )
 
     def find_lambda_layers(self):
         raise NotImplementedError("please manually add layers with add_layer")
-    #     path = f'{self.cfg.app_path}/layers'
-    #
-    #     for layer in os.listdir(path):
+        #path = f'{self.cfg.app_path}/layers'
+        #for layer in os.listdir(path):

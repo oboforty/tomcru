@@ -17,6 +17,11 @@ class LambdaBuilder:
         self.layers = {}
 
     def build_lambda(self, lambda_id, env: str):
+        if lambda_id in self.lambdas:
+            # lambda is already built
+            # todo: later: rebuild if env changes?
+            return
+
         group, lamb = lambda_id.split('/')
 
         # 1) configure env variables

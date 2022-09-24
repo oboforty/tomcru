@@ -27,4 +27,4 @@ class TomcruApiLambdaAuthorizerDescriptor(TomcruApiAuthorizerDescriptor):
 
     @property
     def lambda_id(self):
-        return self.integ_id
+        return self.lambda_source+'/'+self.integ_id

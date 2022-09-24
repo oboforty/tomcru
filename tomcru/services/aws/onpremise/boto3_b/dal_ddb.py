@@ -8,12 +8,14 @@ from eme.data_access import JSON_GEN
 from eme.entities import load_settings
 
 
-def build_database(app_path):
+def build_database(app_path, dalcfg: dict):
+    fileloc = dalcfg.pop('__fileloc__')
+
     db_file = app_path + '/d.db'
     should_build_database = os.path.exists(db_file)
 
     # create sqlite engine
-    dalcfg = load_settings(app_path + '/sam/emecfg/ddb.ini')
+    #dalcfg = load_settings(app_path + '/sam/emecfg/ddb.ini')
     db_engine = create_engine(f'sqlite:///{db_file}', connect_args={'check_same_thread': False})
     Session = sessionmaker(bind=db_engine)
     db_session = Session()
@@ -31,7 +33,7 @@ def build_database(app_path):
 
             self.ddb_content = kwargs.copy()
 
-    for table_name, descr in dalcfg.conf.items():
+    for table_name, descr in dalcfg.items():
         _tables[table_name] = build_table(AbstractModel, table_name, descr.copy())
 
     if not should_build_database:
