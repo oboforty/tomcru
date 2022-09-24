@@ -21,6 +21,7 @@ class TomcruEndpointDescriptor:
         return f'{self.method.upper()} {self.route} => {self.integ_id}'
 
     def __hash__(self):
+        # @TODO: append with api name
         return hash(self.endpoint_id)
 
     @property

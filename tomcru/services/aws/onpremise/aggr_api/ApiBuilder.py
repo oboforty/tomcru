@@ -1,29 +1,24 @@
 import os.path
 from typing import Dict
 
+from eme.entities import load_handlers
+from flask import request
+
 from tomcru import TomcruApiDescriptor, TomcruProject, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruApiLambdaAuthorizerDescriptor, TomcruApiAuthorizerDescriptor, TomcruLambdaIntegrationDescription
 from tomcru.core import utils
+from .ApiGwBuilderCore import ApiGwBuilderCore
 
 from .controllers.EmeProxyController import EmeProxyController
-from .integration.LambdaIntegration import LambdaIntegration
+from .controllers.HomeController import HomeController
+
 from .integration.AuthorizerIntegration import LambdaAuthorizerIntegration, ExternalLambdaAuthorizerIntegration
 from .integration.TomcruApiGWHttpIntegration import TomcruApiGWHttpIntegration, TomcruApiGWAuthorizerIntegration
-from .implementations.EmeWebAppIntegrator import EmeWebAppIntegrator
+from .integration.LambdaIntegration import LambdaIntegration
+
+from .apps.EmeWebApi import EmeWebApi
 
 
-class ApiBuilder:
-
-    def __init__(self, project: TomcruProject, apigw_cfg):
-        self.cfg = project.cfg
-        self.p = project
-
-        # params passed to Integrators:
-        self.apigw_cfg = apigw_cfg
-        self.boto3_builder = self.p.serv('aws:onpremise:boto3_b')
-        self.integrations: Dict[TomcruEndpointDescriptor, TomcruApiGWHttpIntegration] = {}
-        self.authorizers: Dict[str, TomcruApiGWAuthorizerIntegration] = {}
-        self.imp = None
-        self.env: str = None
+class ApiBuilder(ApiGwBuilderCore):
 
     def build_api(self, api_name, api: TomcruApiDescriptor, env: str):
         self.env = env
@@ -34,36 +29,18 @@ class ApiBuilder:
 
         # todo: @LATER: decide between implementation detail, e.g. fastapi | flask | eme-flask
         #app_type = apiopts['app_type']
-        if 'http' == api.api_type:
-            self.imp = EmeWebAppIntegrator(self.p, self.apigw_cfg)
-            app = self.imp.create_app(api_name, apiopts)
-        else:
-            raise NotImplementedError()
+        app = self.create_app(api_name, apiopts)
 
         self._inject_dependencies()
 
         self._build_authorizers()
         _controllers = self._build_controllers(api)
 
-        self.imp.load_eme_handlers(_controllers)
+        self.load_eme_handlers(_controllers)
 
         utils.cleanup_injects()
 
         return app
-
-    def _build_authorizers(self):
-        # build authorizers
-        for authorizer_id, auth in self.cfg.authorizers.items():
-            if isinstance(auth, TomcruApiLambdaAuthorizerDescriptor):
-                # evaluate lambda sub type
-                if 'external' == auth.lambda_source:
-                    self.authorizers[authorizer_id] = ExternalLambdaAuthorizerIntegration(auth, self.apigw_cfg)
-                else:
-                    self.authorizers[authorizer_id] = LambdaAuthorizerIntegration(auth, self.apigw_cfg, self.p.serv('aws:onpremise:lambda_b'), env=self.env)
-
-            else:
-                # todo: implement IAM and jwt
-                raise NotImplementedError(authorizer_id)
 
     def _build_controllers(self, api):
 
@@ -82,11 +59,8 @@ class ApiBuilder:
                 _integration: TomcruApiGWHttpIntegration
 
                 if isinstance(endpoint, TomcruLambdaIntegrationDescription):
-                    # build lambda
-                    if 'http' == api.api_type:
-                        _integration = LambdaIntegration(endpoint, auth, self.p.serv('aws:onpremise:lambda_b'), env=self.env)
-                    elif 'ws' == api.api_type:
-                        _integration = LambdaWebsocketIntegration(endpoint, auth, self.p.serv('aws:onpremise:lambda_b'), env=self.env)
+                    # build lambda integration
+                    _integration = LambdaIntegration(endpoint, auth, self.p.serv('aws:onpremise:lambda_b'), env=self.env)
                 else:
                     # todo: for now we assume it's always lambda
                     raise NotImplementedError()
@@ -97,25 +71,9 @@ class ApiBuilder:
                 # pass endpoint to proxy controller, so that it constructs correct routing (needed for eme apps)
                 _controllers[ro.group].add_method(endpoint, lambda x: NotImplementedError())
                 # app type dependent integration (eme-webapp | flask | fastapi | eme-websocket)
-                self.imp.add_method(endpoint)
+                self.add_method(endpoint)
 
         return _controllers
-
-    def _inject_dependencies(self):
-        """
-        Injects boto3 and lambda layers for all lambda integrations
-        """
-
-        #self.boto3_injector.inject_boto3()
-        # inject boto3
-        boto3, boto3_path = self.boto3_builder.build_boto3(self.imp)
-        utils.inject('boto3', boto3_path, boto3)
-
-        # inject layers
-        if self.cfg.layers:
-            _layers_paths = list(map(lambda f: os.path.join(self.cfg.app_path, 'layers', f[3]), self.cfg.layers))
-            _layers_keywords = set(map(lambda f: f[1][0], self.cfg.layers))
-            utils.inject(_layers_keywords, _layers_paths)
 
     def on_request(self, **kwargs):
         """
@@ -124,10 +82,60 @@ class ApiBuilder:
         :return: flask response obj
         """
         # get called endpoint
-        ep = self.imp.get_called_endpoint()
+        ep = self.get_called_endpoint(**kwargs)
         integ = self.integrations[ep]
 
         response = integ.on_request(**kwargs)
 
         # HTTP in flask needs a return response, et voilà
         return response
+
+    def create_app(self, api_name, apiopts):
+        self.app = EmeWebApi(self.cfg.apis[api_name], apiopts)
+
+        return self.app
+
+    def load_eme_handlers(self, _controllers):
+        # add api index controller
+        webcfg = {"__index__": "Home:get_index"}
+        _controllers['Home'] = HomeController(self.app)
+
+        # @TODO: @later: add swagger pages? generate them or what?
+        self.app.load_controllers(_controllers, webcfg)
+
+        # include custom controllers
+        _app_path = os.path.join(self.cfg.app_path, 'controllers')
+        if os.path.exists(_app_path):
+            self.app.load_controllers(load_handlers(self.app, 'Controller', path=_app_path), webcfg)
+
+    def add_method(self, endpoint: TomcruEndpointDescriptor, fn_to_call=None):
+        """
+        Adds method to EME/Flask app
+        :param app: eme app (flask app)
+        :param endpoint: endpoint url to hook to
+        """
+        # replace AWS APIGW route scheme to flask routing schema
+        _api_route = endpoint.route.replace('{', '<').replace('}', '>')
+        self.app._custom_routes[endpoint.endpoint_id].add(_api_route)
+
+    def get_called_endpoint_id(self) -> str:
+        """
+        Gets abstract endpoint id from flask request
+        :return:
+        """
+        ep = request.endpoint
+        group, method_name = ep.split(':')
+        method, integ_id = method_name.split("_")
+
+        # todo: but isn't this the exact same as request.endpoint?
+        return f'{group}:{method.lower()}_{integ_id}'
+
+    def get_called_endpoint(self) -> TomcruEndpointDescriptor:
+        # @TODO: how to fetch right api?
+        api = next(iter(self.cfg.apis.values()))
+        aws_url_rule = str(request.url_rule).replace('<', '{').replace('>', '}')
+
+        route = api.routes[aws_url_rule]
+        endpoint = next(filter(lambda x: x.endpoint_id == request.endpoint, route.endpoints), None)
+
+        return endpoint

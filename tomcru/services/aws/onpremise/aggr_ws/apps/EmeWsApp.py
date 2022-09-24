@@ -1,14 +1,17 @@
 import asyncio
 import uuid
+import time
 
 from eme.websocket import WebsocketApp
 
-from tomcru import TomcruCfg
+from tomcru import TomcruCfg, TomcruApiDescriptor
 
 
 class EmeWsApp(WebsocketApp):
-    def __init__(self, tomcrucfg: TomcruCfg, cfg: dict):
+    def __init__(self, wsappcfg: TomcruApiDescriptor, cfg: dict):
         self.debug = True
+        self.api_name = wsappcfg.api_name
+        self.is_main_thread = False
 
         super().__init__({
             'websocket': {
@@ -19,21 +22,22 @@ class EmeWsApp(WebsocketApp):
         self._clients = {}
         self._client_infos = {}
         self.boto3 = None
+        self.port = cfg.get('port')
 
     def post_to_connection(self, ConnectionId, Data: str):
-            # Data = json.loads(Data)
+        # Data = json.loads(Data)
 
-            # @todo: detect app type
-            # if not isinstance(self.app, EmeSamWsApp):
-            #     raise Exception("Not provided WS app as proxy! " + str(type(self.app)))
+        # @todo: detect app type
+        # if not isinstance(self.app, EmeSamWsApp):
+        #     raise Exception("Not provided WS app as proxy! " + str(type(self.app)))
 
-            if isinstance(ConnectionId, str):
-                ConnectionId = uuid.UUID(ConnectionId)
+        if isinstance(ConnectionId, str):
+            ConnectionId = uuid.UUID(ConnectionId)
 
-            # todo: itT: find client wrapper by conn id
-            client = self._clients[ConnectionId]
+        # todo: itT: find client wrapper by conn id
+        client = self._clients[ConnectionId]
 
-            asyncio.ensure_future(self.send(Data, client))
+        asyncio.ensure_future(self.send(Data, client))
 
     def on_connect(self, client, path):
         self._clients[client.id] = client
@@ -51,6 +55,16 @@ class EmeWsApp(WebsocketApp):
         self._client_infos.pop(client.id, None)
 
         # todo call $DISCONNECT endpoint lambda
+
+    def run(self, host=None, port=None, debug=None):
+        if host:
+            self.host = host
+        if port:
+            self.port = port
+        if debug is not None:
+            self.debug = debug
+
+        self.start()
 
     # def get_clients_at(self, wid: str):
     #     for client in self.world_clients[str(wid)]:

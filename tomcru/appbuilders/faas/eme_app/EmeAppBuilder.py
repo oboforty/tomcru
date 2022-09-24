@@ -27,8 +27,12 @@ class EmeAppBuilder:
 
         return self.apis
 
-    def run_apps(self, apps, env):
-        apps.sort(key=lambda x: x.is_main_thread)
+    def run_apps(self, apps, env, main_api=None, filter_apps=None):
+        if main_api is None:
+            main_api = next(iter(apps)).api_name
+
+        apps.sort(key=lambda x: x.api_name == main_api)
 
         for app in apps:
-            start_flask_app(app.api_name, app, env=env, threaded=not app.is_main_thread)
+            if not filter_apps or app.api_name in filter_apps:
+                start_flask_app(app.api_name, app, env=env, threaded=not app.api_name == main_api)

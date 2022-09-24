@@ -1,10 +1,5 @@
 import json
 import os
-from collections import defaultdict
-
-from eme.entities import EntityJSONEncoder
-
-from flask import request
 
 from .TomcruApiGWHttpIntegration import TomcruApiGWAuthorizerIntegration
 from tomcru import TomcruApiLambdaAuthorizerDescriptor
@@ -24,12 +19,18 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
         self.authorizers_cache = {}
 
-    def authorize(self, event: dict):
+    def authorize(self, event: dict, source='headers'):
         auth_event = {
+            'queryStringParameters': event.get('queryStringParameters', {}).copy(),
+            "methodArn": event['methodArn'],
             'requestContext': event['requestContext'].copy(),
-            'identitySource': event['headers'].get('authorization'),
             'headers': event['headers'].copy()
         }
+
+        if 'headers' == source:
+            auth_event['identitySource'] = auth_event['headers'].get('authorization')
+        elif 'params' == source:
+            auth_event['identitySource'] = auth_event['queryStringParameters'].get('authorization')
 
         # check if cached
         cache_key = auth_event['identitySource']
@@ -38,12 +39,11 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         if not user:
             resp = self.lambda_builder.run_lambda(self.lambda_id, auth_event, self.env)
 
-            if resp.get('statusCode', 200) == 200:
+            if self.parse_auth_response(resp):
                 user = resp['context']
-            elif resp.get('isAuthorized'):
+            else:
                 user = None
-
-                # todo: don't pass through? check aws docks
+                # todo: don't let pass through? check aws docks
             if user:
                 # cache authorizer response
                 self.authorizers_cache[cache_key] = user
@@ -56,6 +56,14 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
         return user
 
+    def parse_auth_response(self, resp):
+        if 'statusCode' in resp or 'isAuthorized' in resp:
+            # simplified authorizer:
+            return resp.get('statusCode', 200) == 200 and resp.get('isAuthorized')
+        else:
+            # IAM policy
+            return resp.get('Statement', [{}])[0].get('Effect') == 'Allow'
+
 
 class ExternalLambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
     def __init__(self, cfg: TomcruApiLambdaAuthorizerDescriptor, apigw_cfg: dict):
@@ -67,7 +75,7 @@ class ExternalLambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         with open(os.path.join(auth_resp_path, lamb+'_mock.json')) as fh:
             self.auth_resp = json.load(fh)
 
-    def authorize(self, event: dict):
+    def authorize(self, event: dict, source=None):
 
         if self.auth_resp['isAuthorized']:
             event['requestContext']['authorizer'] = {

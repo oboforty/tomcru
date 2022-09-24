@@ -9,7 +9,7 @@ from eme.entities import load_settings
 
 
 def build_database(app_path, dalcfg: dict):
-    fileloc = dalcfg.pop('__fileloc__')
+    fileloc = dalcfg.pop('__fileloc__', None)
 
     db_file = app_path + '/d.db'
     should_build_database = os.path.exists(db_file)
