@@ -14,7 +14,7 @@ class TomcruCfg:
         self.app_path = path + '/'
         self.pck_path = pck_path + '/'
 
-        self.envs = {}
+        self.envs: Dict[str, Dict[str, dict]] = defaultdict(dict)
 
         self.tasks = {}
         self.apis: Dict[str, TomcruApiDescriptor] = {}

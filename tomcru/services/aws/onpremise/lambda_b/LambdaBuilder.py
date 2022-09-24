@@ -14,30 +14,25 @@ class LambdaBuilder:
         self.cfg = project.cfg
         self.opts = opts
         self.lambdas = {}
+        self.layers = {}
 
-    def build_lambda(self, endpoint: TomcruLambdaIntegrationDescription):
-        if isinstance(endpoint, str):
-
-            print(1)
-        #     _endpoint = next(filter(lambda l: l[1] == endpoint, self.cfg.lambdas))
-        #     if _endpoint is None:
-        #         raise Exception("Lambda not found: " + endpoint)
-        #     endpoint = _endpoint
+    def build_lambda(self, lambda_id, env: str):
+        group, lamb = lambda_id.split('/')
 
         # 1) configure env variables
-        self.set_env_for(endpoint.lambda_id)
+        self.set_env_for(lambda_id, env)
 
         # 2) load lambda function
-        _lambd_path = os.path.join(self.cfg.app_path, 'lambdas', endpoint.group, endpoint.lamb)
+        _lambd_path = os.path.join(self.cfg.app_path, 'lambdas', group, lamb)
         sys.path.append(_lambd_path)
-        module = import_module(f"lambdas.{endpoint.group}.{endpoint.lamb}.app")
+        module = import_module(f"lambdas.{group}.{lamb}.app")
         sys.path.remove(_lambd_path)
 
         fn = module.handler
-        self.lambdas[endpoint.lambda_id] = fn
+        self.lambdas[lambda_id] = fn
         return fn
 
-    def run_lambda(self, lamb_id, evt, **kwargs):
+    def run_lambda(self, lamb_id, evt, env, **kwargs):
         lamb_fn = self.lambdas[lamb_id]
 
         # prepare params
@@ -47,14 +42,10 @@ class LambdaBuilder:
             _lam_arsg.append(self.get_context())
 
         # setup env variables
-        self.set_env_for(lamb_id)
+        self.set_env_for(lamb_id, env)
 
         # setup layers
-        # @TODO: ITT
-        # todo         - tomcru utils: MyMetaFinder
-        # todo         - tomcru utils: lib replacer
-        # todo         - boto3 inject service
-        # todo         - inject layers (here)
+        # todo: inject individual layers
 
         # execute
         try:
@@ -69,11 +60,13 @@ class LambdaBuilder:
     def get_context(self, **kwargs):
         return EmeLambdaContext(**kwargs)
 
-    def set_env_for(self, lamb_id):
-        if lamb_id not in self.cfg.envs:
+    def set_env_for(self, lamb_id, env):
+        _envs = self.cfg.envs[env]
+
+        if lamb_id not in _envs:
             return None
 
-        for k, v in self.cfg.envs[lamb_id].items():
+        for k, v in _envs[lamb_id].items():
             os.environ.setdefault(k.upper(), str(v))
 
-        return self.cfg.envs[lamb_id]
+        return _envs[lamb_id]

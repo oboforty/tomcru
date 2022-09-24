@@ -51,25 +51,9 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
 
     def parse_response(self, resp: dict):
         """
-        Parses HTTP lambda integration's response to flask response
+        Parses WS lambda integration's response. EME can return responses as 1 on 1
         :param resp: lambda integration response (2.0 format)
         :return: output_str, status_code
         """
-        # parse response
-        if isinstance(resp, dict):
-            if 'body' in resp:
-                try:
-                    body = json.dumps(resp['body'])
-                except:
-                    body = resp['body']
-                statusCode = resp.get('statusCode', 200)
-            else:
-                body = json.dumps(resp, cls=EntityJSONEncoder)
-                statusCode = 200
-        else:
-            body = resp
-            statusCode = 200
-            #body, statusCode = resp.get('body', ''), resp.get('statusCode', 200)
 
-        return body, statusCode
-
+        return None

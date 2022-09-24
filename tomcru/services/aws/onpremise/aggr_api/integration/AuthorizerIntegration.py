@@ -11,12 +11,13 @@ from tomcru import TomcruApiLambdaAuthorizerDescriptor
 
 class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
-    def __init__(self, cfg: TomcruApiLambdaAuthorizerDescriptor, auth_cfg, lambda_builder):
+    def __init__(self, cfg: TomcruApiLambdaAuthorizerDescriptor, auth_cfg, lambda_builder, env=None):
         self.cfg = cfg
         self.lambda_builder = lambda_builder
 
         self.lambda_folder = cfg.lambda_source
         self.lambda_name = cfg.lambda_id
+        self.env = None
 
     def authorize(self, evt: dict):
         user = None
@@ -69,15 +70,12 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         return lamb
 
 
-
 class ExternalLambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
     def __init__(self, cfg: TomcruApiLambdaAuthorizerDescriptor, apigw_cfg: dict):
         self.cfg = cfg
 
-        filepath = apigw_cfg['__authorizer_mock__'].get(cfg.auth_id)
-
         auth_resp_path = apigw_cfg['__fileloc__']
-        with open(os.path.join(auth_resp_path, filepath)) as fh:
+        with open(os.path.join(auth_resp_path, cfg.lambda_id+'_mock.json')) as fh:
             self.auth_resp = json.load(fh)
 
     def authorize(self, event: dict):

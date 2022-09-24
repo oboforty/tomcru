@@ -1,24 +1,39 @@
+import asyncio
+import uuid
+
 from eme.websocket import WebsocketApp
-import time
 
-from awssam.AwsSamCfg import AwsSamCfg
+from tomcru import TomcruCfg
 
 
-class EmeSamWsApp(WebsocketApp):
-
-    def __init__(self, samcfg: AwsSamCfg):
+class EmeWsApp(WebsocketApp):
+    def __init__(self, tomcrucfg: TomcruCfg, cfg: dict):
         self.debug = True
 
-        WebsocketApp.__init__(self, {
+        super().__init__({
             'websocket': {
                 'type': 'samapp',
                 'debug': True,
             }
         })
-
         self._clients = {}
         self._client_infos = {}
         self.boto3 = None
+
+    def post_to_connection(self, ConnectionId, Data: str):
+            # Data = json.loads(Data)
+
+            # @todo: detect app type
+            # if not isinstance(self.app, EmeSamWsApp):
+            #     raise Exception("Not provided WS app as proxy! " + str(type(self.app)))
+
+            if isinstance(ConnectionId, str):
+                ConnectionId = uuid.UUID(ConnectionId)
+
+            # todo: itT: find client wrapper by conn id
+            client = self._clients[ConnectionId]
+
+            asyncio.ensure_future(self.send(Data, client))
 
     def on_connect(self, client, path):
         self._clients[client.id] = client

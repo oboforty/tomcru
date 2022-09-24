@@ -1,3 +1,4 @@
+import os.path
 from typing import Dict
 
 from tomcru import TomcruApiDescriptor, TomcruProject, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruApiLambdaAuthorizerDescriptor, TomcruApiAuthorizerDescriptor, TomcruLambdaIntegrationDescription
@@ -18,13 +19,15 @@ class ApiBuilder:
 
         # params passed to Integrators:
         self.apigw_cfg = apigw_cfg
-        self.lambda_builder = self.p.serv('aws:onpremise:lambda_b')
         self.boto3_builder = self.p.serv('aws:onpremise:boto3_b')
         self.integrations: Dict[TomcruEndpointDescriptor, TomcruApiGWHttpIntegration] = {}
         self.authorizers: Dict[str, TomcruApiGWAuthorizerIntegration] = {}
         self.imp = None
+        self.env: str = None
 
-    def build_api(self, api_name, api: TomcruApiDescriptor):
+    def build_api(self, api_name, api: TomcruApiDescriptor, env: str):
+        self.env = env
+
         # build eme app object
         apiopts = self.apigw_cfg.get('__default__', {})
         apiopts.update(self.apigw_cfg.get(api_name, {}))
@@ -56,7 +59,7 @@ class ApiBuilder:
                 if 'external' == auth.lambda_source:
                     self.authorizers[authorizer_id] = ExternalLambdaAuthorizerIntegration(auth, self.apigw_cfg)
                 else:
-                    self.authorizers[authorizer_id] = LambdaAuthorizerIntegration(auth, self.apigw_cfg, self.lambda_builder)
+                    self.authorizers[authorizer_id] = LambdaAuthorizerIntegration(auth, self.apigw_cfg, self.p.serv('aws:onpremise:lambda_b'), env=self.env)
 
             else:
                 # todo: implement IAM and jwt
@@ -80,8 +83,10 @@ class ApiBuilder:
 
                 if isinstance(endpoint, TomcruLambdaIntegrationDescription):
                     # build lambda
-                    self.lambda_builder.build_lambda(endpoint)
-                    _integration = LambdaIntegration(endpoint, auth, self.lambda_builder)
+                    if 'http' == api.api_type:
+                        _integration = LambdaIntegration(endpoint, auth, self.p.serv('aws:onpremise:lambda_b'), env=self.env)
+                    elif 'ws' == api.api_type:
+                        _integration = LambdaWebsocketIntegration(endpoint, auth, self.p.serv('aws:onpremise:lambda_b'), env=self.env)
                 else:
                     # todo: for now we assume it's always lambda
                     raise NotImplementedError()
@@ -108,7 +113,7 @@ class ApiBuilder:
 
         # inject layers
         if self.cfg.layers:
-            _layers_paths = list(map(lambda f: f[3], self.cfg.layers))
+            _layers_paths = list(map(lambda f: os.path.join(self.cfg.app_path, 'layers', f[3]), self.cfg.layers))
             _layers_keywords = set(map(lambda f: f[1][0], self.cfg.layers))
             utils.inject(_layers_keywords, _layers_paths)
 

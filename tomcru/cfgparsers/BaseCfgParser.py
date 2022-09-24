@@ -40,6 +40,24 @@ class BaseCfgParser:
         for routecfg in routes:
             self.add_eme_routes(routecfg, 'http', check_files = True)
 
+    def parse_envvars(self, vendor):
+        """
+        Parses lambda and other envvars configured
+        :return:
+        """
+
+        path = f'{self.cfg.app_path}/cfg/{vendor}'
+
+        for env in os.listdir(path):
+            envvar_path = os.path.join(path, env, 'envvars')
+
+            if os.path.exists(envvar_path):
+                for root, dirs, files in os.walk(envvar_path):
+                    for file in files:
+                        if file.endswith('.ini'):
+                            # envvar file
+                            self.add_envvars(os.path.join(envvar_path, file), env, vendor)
+
     def add_api_cfg(self, file):
         r = load_settings(file, delimiters=('=',)).conf
 
@@ -116,9 +134,6 @@ class BaseCfgParser:
     def add_layer(self, layer_name, files=None, packages=None, folder=None, single_file=False, in_house=True):
         self.cfg.layers.append((layer_name, files, packages, folder, single_file, in_house))
 
-    def load_envs(self, env):
-        self.cfg.envs = dict(load_settings(self.cfg.app_path+'/sam/cfg/'+env+'/envlist.ini').conf)
-
     def get_integ(self, api_name, integ_opts, check_files: bool, route, method) -> TomcruEndpointDescriptor:
         """
 
@@ -184,3 +199,27 @@ class BaseCfgParser:
             r = default_val
 
         return r
+
+    def add_envvars(self, file_path, env, vendor):
+        """
+        Adds enviornment variables ini file defined for:
+        - lambda
+
+        :param file_path: ini filepath
+        :param env: environment to configure envvars for
+        :param vendor: cloud vendor (aws | azure | gpc)
+        :return:
+        """
+        if not os.path.isabs(file_path):
+            file_path = os.path.join(self.cfg.app_path, 'cfg', vendor, env, 'envvars', file_path)
+
+        if not os.path.exists(file_path):
+            raise Exception(f"Define your envvars in the following directory structure: project/cfg/{vendor}/<env>/envvars/<filename>.ini")
+
+        self.cfg.envs[env] = dict(load_settings(file_path).conf)
+
+    def find_lambda_layers(self):
+        raise NotImplementedError("please manually add layers with add_layer")
+    #     path = f'{self.cfg.app_path}/layers'
+    #
+    #     for layer in os.listdir(path):

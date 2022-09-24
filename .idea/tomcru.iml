@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/tomcru" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/_junk" />
       <excludeFolder url="file://$MODULE_DIR$/.github" />
+      <excludeFolder url="file://$MODULE_DIR$/tomcru/services/aws/sam/_junk" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

@@ -11,7 +11,6 @@ from ..services.apps.EmeSamWsApp import EmeSamWsApp
 
 
 class WsProxyContextBuilder:
-    WS_METHOD_PARAMS = ['route', 'msid', 'user', 'data', 'client', 'token']
 
     def __init__(self, cfg: AwsSamCfg):
         self.apis = cfg.wss
@@ -156,21 +155,8 @@ class WsProxyContextBuilder:
         return user
 
     def load_eme_handlers(self, groups):
-        webcfg = {}
 
-        # groups are already added, no need to call load_groups
-        # add generated controllers
-        #self.app.load_groups(groups, webcfg)
-        self.app.debug_groups(webcfg)
-
-        # include custom controllers
-        _app_path = os.path.join(self.app_path, 'groups')
-        if os.path.exists(_app_path):
-            self.app.load_groups(load_handlers(self.app, 'Group', path=_app_path), webcfg)
-
-    def add_method(self, endpoint, fn_to_call):
-        self.app._endpoints_to_methods[endpoint.endpoint] = endpoint.endpoint_id
-        self.app._methods[endpoint.endpoint_id] = (fn_to_call, self.WS_METHOD_PARAMS)
+    def add_method(self, endpoint, ):
 
     @property
     def route_collections(self):

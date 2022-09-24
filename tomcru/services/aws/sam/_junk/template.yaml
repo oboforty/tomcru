@@ -1,0 +1,142 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Serverless website'
+
+Parameters:
+  LambdaExecRole:
+    Type: String
+    Default: arn:aws:iam::636500095665:role/service-role/LambdaAccessDynamoDB
+  LambdaWsRole:
+    Type: String
+    Default: arn:aws:iam::636500095665:role/service-role/testff-role-gv75bbti
+  LambdaAccessRole:
+    Type: String
+    Default: arn:aws:iam::636500095665:role/APIGatewayAccessLambda
+  AuthorizerArn:
+    Type: String
+    Default: arn:aws:lambda:eu-central-1:636500095665:function:DoorsCachedAuthorizer
+  DkgsDalLayerArn:
+    Type: String
+    Default: arn:aws:lambda::636500095665:layer:DkgsDal
+Globals:
+  Function:
+    AutoPublishAlias: live
+    Handler: app.handler
+    Runtime: python3.9
+    Timeout: 120
+    MemorySize: 128
+    Architectures:
+      - arm64
+
+Resources:
+  DkgsDal:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: "DkgsDal"
+      ContentUri: ./layers/DkgsDal.zip
+      CompatibleRuntimes:
+        - provided
+      LicenseInfo: 'Available under the MIT-0 license.'
+  GetUser:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: GetUser
+      CodeUri: ./lambdas/users/GetUser
+      Role: !Ref LambdaExecRole
+
+  DoorsCachedAuthorizer:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: DoorsCachedAuthorizer
+      CodeUri: ./lambdas/users/DoorsCachedAuthorizer
+      Role: !Ref LambdaExecRole
+      Environment:
+         Variables:
+             DOORS_API: http://18.185.188.159/
+
+  CreateReport:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: CreateReport
+      CodeUri: ./lambdas/users/CreateReport
+      Role: !Ref LambdaExecRole
+      Environment:
+         Variables:
+             TRELLO_TARGET_EMAIL: oboforty+7zula7c5acaxohffz6mf@boards.trello.com
+             TRELLO_FROM_EMAIL: rajmund.csombordi@hotmail.com
+             SES_AWS_REGION: eu-central-1
+
+  DoorsAuthorizer:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: DoorsAuthorizer
+      CodeUri: ./lambdas/users/DoorsAuthorizer
+      Role: !Ref LambdaExecRole
+      Environment:
+         Variables:
+             DOORS_API: http://18.185.188.159/
+
+  dkgs:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: v1
+      DefinitionBody:
+        openapi: '3.0.1'
+        info:
+          title: dkgs
+        components:
+          securitySchemes:
+            doorsOAuth2:
+              type: apiKey
+              name: "Authorization"
+              in: "header"
+              x-amazon-apigateway-authorizer:
+                type: request
+                identitySource: "$request.header.Authorization"
+                authorizerUri: !Join ["", ["arn:aws:apigateway:", Ref: "AWS::Region",":lambda:path/2015-03-31/functions/", Ref: "AuthorizerArn", "/invocations"]]
+                #authorizerResultTtlInSeconds : 3600
+                authorizerPayloadFormatVersion: 2.0
+                enableSimpleResponses: true
+                authorizerCredentials: !Ref LambdaAccessRole
+        paths:
+          /api/v1/users:
+            get:
+              x-amazon-apigateway-integration:
+                type: "aws_proxy"
+                httpMethod: "POST"
+                uri: !GetAtt 'GetUser.Arn'
+                credentials: !Ref LambdaAccessRole
+                timeoutInMillis: 3000
+                payloadFormatVersion: "2.0"
+                
+              security:
+              - doorsOAuth2: []
+
+          /api/v1/users/report:
+            post:
+              x-amazon-apigateway-integration:
+                type: "aws_proxy"
+                httpMethod: "POST"
+                uri: !GetAtt 'CreateReport.Arn'
+                credentials: !Ref LambdaAccessRole
+                timeoutInMillis: 3000
+                payloadFormatVersion: "2.0"
+                
+              security:
+              - doorsOAuth2: []
+
+          /api/v1/{uid}/testyanny:
+            get:
+              x-amazon-apigateway-integration:
+                type: "aws_proxy"
+                httpMethod: "POST"
+                uri: !GetAtt 'GetUser.Arn'
+                credentials: !Ref LambdaAccessRole
+                timeoutInMillis: 3000
+                payloadFormatVersion: "2.0"
+                requestParameters:
+                  "overwrite:querystring.uid": "$request.path.uid"
+              security:
+              - doorsOAuth2: []
+
+

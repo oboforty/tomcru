@@ -1,15 +1,16 @@
+
 import os
 
-from flask import request
 
 from tomcru import TomcruProject, TomcruEndpointDescriptor
 from eme.entities import load_handlers
 
-from .apps.EmeWebApi import EmeWebApi
-from ..controllers.HomeController import HomeController
+from .apps.EmeWsApp import EmeWsApp
 
 
-class EmeWebAppIntegrator:
+class EmeWsAppIntegrator:
+    WS_METHOD_PARAMS = ['route', 'msid', 'user', 'data', 'client', 'token']
+
     def __init__(self, project: TomcruProject, apigw_cfg):
         self.p = project
         self.cfg = project.cfg
@@ -18,29 +19,35 @@ class EmeWebAppIntegrator:
         self.app = None
 
     def create_app(self, apiopts):
-        self.app = EmeWebApi(self.cfg, apiopts)
+        self.app = EmeWsApp(self.cfg, apiopts)
 
         return self.app
 
-    def load_eme_handlers(self, _controllers):
-        # add api index controller
-        webcfg = {"__index__": "Home:get_index"}
-        _controllers['Home'] = HomeController(self.app)
+    def load_eme_handlers(self, groups):
+        webcfg = {}
 
-        # @TODO: @later: add swagger pages? generate them or what?
-        self.app.load_controllers(_controllers, webcfg)
+        # groups are already added, no need to call load_groups
+        # add generated controllers
+        #self.app.load_groups(groups, webcfg)
+        self.app.debug_groups(webcfg)
 
         # include custom controllers
-        _app_path = os.path.join(self.cfg.app_path, 'controllers')
+        _app_path = os.path.join(self.cfg.app_path, 'groups')
         if os.path.exists(_app_path):
-            self.app.load_controllers(load_handlers(self.app, 'Controller', path=_app_path), webcfg)
+            self.app.load_groups(load_handlers(self.app, 'Group', path=_app_path), webcfg)
 
-    def add_method(self, endpoint: TomcruEndpointDescriptor):
+    def add_method(self, endpoint: TomcruEndpointDescriptor, fn_to_call=None):
         """
         Adds method to EME/Flask app
         :param app: eme app (flask app)
         :param endpoint: endpoint url to hook to
         """
+        assert fn_to_call is not None
+
+        self.app._endpoints_to_methods[endpoint.endpoint] = endpoint.endpoint_id
+        self.app._methods[endpoint.endpoint_id] = (fn_to_call, self.WS_METHOD_PARAMS)
+
+
         # replace AWS APIGW route scheme to flask routing schema
         _api_route = endpoint.route.replace('{', '<').replace('}', '>')
         self.app._custom_routes[endpoint.endpoint_id].add(_api_route)
@@ -70,4 +77,4 @@ class EmeWebAppIntegrator:
         return endpoint
 
 
-create_implementation = EmeWebAppIntegrator
+create_implementation = EmeWsAppIntegrator

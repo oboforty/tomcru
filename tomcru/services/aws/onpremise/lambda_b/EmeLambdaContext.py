@@ -5,11 +5,11 @@ import time
 class EmeLambdaContext:
 
     def __init__(self, **kwargs):
+        self.max_lambda_time_ms = (12*1000*3600) # todo: configurable
         self.start = time.time()
 
     def get_remaining_time_in_millis(self):
-        # todo: how to get max time?
-        return (12*1000*3600) - 1000*(time.time()-self.start)
+        return self.max_lambda_time_ms - 1000*(time.time()-self.start)
 
     @property
     def function_name(self):
