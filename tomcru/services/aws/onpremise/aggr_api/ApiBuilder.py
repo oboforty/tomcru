@@ -1,18 +1,15 @@
 import os.path
-from typing import Dict
 
 from eme.entities import load_handlers
 from flask import request
 
-from tomcru import TomcruApiDescriptor, TomcruProject, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruApiLambdaAuthorizerDescriptor, TomcruApiAuthorizerDescriptor, TomcruLambdaIntegrationDescription
-from tomcru.core import utils
+from tomcru import TomcruApiDescriptor, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruLambdaIntegrationDescription
 from .ApiGwBuilderCore import ApiGwBuilderCore
 
 from .controllers.EmeProxyController import EmeProxyController
 from .controllers.HomeController import HomeController
 
-from .integration.AuthorizerIntegration import LambdaAuthorizerIntegration, ExternalLambdaAuthorizerIntegration
-from .integration.TomcruApiGWHttpIntegration import TomcruApiGWHttpIntegration, TomcruApiGWAuthorizerIntegration
+from .integration.TomcruApiGWHttpIntegration import TomcruApiGWHttpIntegration
 from .integration.LambdaIntegration import LambdaIntegration
 
 from .apps.EmeWebApi import EmeWebApi
@@ -38,7 +35,7 @@ class ApiBuilder(ApiGwBuilderCore):
 
         self.load_eme_handlers(_controllers)
 
-        utils.cleanup_injects()
+        self._clean_dependencies()
 
         return app
 

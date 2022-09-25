@@ -7,6 +7,7 @@ from importlib import import_module
 
 from .EmeLambdaContext import EmeLambdaContext
 from tomcru import TomcruEndpointDescriptor, TomcruProject, TomcruLambdaIntegrationDescription
+from tomcru import utils
 
 
 class LambdaBuilder:
@@ -23,15 +24,27 @@ class LambdaBuilder:
             return
 
         group, lamb = lambda_id.split('/')
+        _lambd_path = os.path.join(self.cfg.app_path, 'lambdas', group, lamb)
 
-        # 1) configure env variables
+        # configure env variables
         self.set_env_for(lambda_id, env)
 
-        # 2) load lambda function
-        _lambd_path = os.path.join(self.cfg.app_path, 'lambdas', group, lamb)
+
+        #_f = utils.inject(None, _lambd_path)
+
+        # ensure that only local packages are loaded; and packages with the same name from other  lambdas aren't
+        _ctx_orig = dict(sys.modules)
+
+        # load lambda function
         sys.path.append(_lambd_path)
         module = import_module(f"lambdas.{group}.{lamb}.app")
         sys.path.remove(_lambd_path)
+
+        # restore loaded modules
+        sys.modules.clear()
+        sys.modules.update(_ctx_orig)
+
+        #utils.clean_inject(_f)
 
         fn = module.handler
         self.lambdas[lambda_id] = fn

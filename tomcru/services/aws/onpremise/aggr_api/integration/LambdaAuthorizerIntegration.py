@@ -1,6 +1,3 @@
-import json
-import os
-
 from .TomcruApiGWHttpIntegration import TomcruApiGWAuthorizerIntegration
 from tomcru import TomcruApiLambdaAuthorizerDescriptor
 
@@ -8,7 +5,8 @@ from tomcru import TomcruApiLambdaAuthorizerDescriptor
 class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
     def __init__(self, cfg: TomcruApiLambdaAuthorizerDescriptor, auth_cfg, lambda_builder, env=None):
-        self.cfg = cfg
+        super().__init__(cfg)
+
         self.lambda_builder = lambda_builder
 
         self.lambda_folder = cfg.lambda_source
@@ -17,14 +15,20 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
         self.lambda_builder.build_lambda(self.lambda_id, env=self.env)
 
-        self.authorizers_cache = {}
-
     def authorize(self, event: dict, source='headers'):
+        """
+        Runs lambda
+
+        :param event: api gw integration events
+        :param source: provided source of authorization token (headers | params | body)
+
+        :return: if authorized
+        """
         auth_event = {
             'queryStringParameters': event.get('queryStringParameters', {}).copy(),
             "methodArn": event['methodArn'],
             'requestContext': event['requestContext'].copy(),
-            'headers': event['headers'].copy()
+            'headers': event.get('headers', {}).copy()
         }
 
         if 'headers' == source:
@@ -34,7 +38,7 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
         # check if cached
         cache_key = auth_event['identitySource']
-        user = self.authorizers_cache.get(cache_key) if cache_key else None
+        user = self.get_cache(cache_key)
 
         if not user:
             resp = self.lambda_builder.run_lambda(self.lambda_id, auth_event, self.env)
@@ -60,27 +64,7 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         if 'statusCode' in resp or 'isAuthorized' in resp:
             # simplified authorizer:
             return resp.get('statusCode', 200) == 200 and resp.get('isAuthorized')
-        else:
+        elif 'policyDocument' in resp:
             # IAM policy
-            return resp.get('Statement', [{}])[0].get('Effect') == 'Allow'
+            return resp['policyDocument'].get('Statement', [{}])[0].get('Effect') == 'Allow'
 
-
-class ExternalLambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
-    def __init__(self, cfg: TomcruApiLambdaAuthorizerDescriptor, apigw_cfg: dict):
-        self.cfg = cfg
-
-        group, lamb = cfg.lambda_id.split('/')
-
-        auth_resp_path = apigw_cfg['__fileloc__']
-        with open(os.path.join(auth_resp_path, lamb+'_mock.json')) as fh:
-            self.auth_resp = json.load(fh)
-
-    def authorize(self, event: dict, source=None):
-
-        if self.auth_resp['isAuthorized']:
-            event['requestContext']['authorizer'] = {
-                'lambda': self.auth_resp['context'].copy()
-            }
-
-            return True
-        return False

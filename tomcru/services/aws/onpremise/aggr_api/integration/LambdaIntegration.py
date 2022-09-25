@@ -7,7 +7,8 @@ from flask import request
 from tomcru import TomcruApiDescriptor, TomcruLambdaIntegrationDescription, TomcruEndpointDescriptor
 
 from .TomcruApiGWHttpIntegration import TomcruApiGWHttpIntegration
-from .AuthorizerIntegration import LambdaAuthorizerIntegration
+from .LambdaAuthorizerIntegration import LambdaAuthorizerIntegration
+from .ExternalLambdaAuthorizerIntegration import ExternalLambdaAuthorizerIntegration
 
 
 class LambdaIntegration(TomcruApiGWHttpIntegration):

@@ -2,8 +2,9 @@ import asyncio
 import uuid
 import time
 from types import SimpleNamespace
+from typing import Dict
 
-from eme.websocket import WebsocketApp
+from eme.websocket import WebsocketApp, EmeWebsocketClient
 
 from tomcru import TomcruCfg, TomcruApiDescriptor
 
@@ -20,7 +21,7 @@ class EmeWsApp(WebsocketApp):
                 'debug': True,
             }
         })
-        self._clients = {}
+        self._clients: Dict[str, EmeWebsocketClient] = {}
         self._client_infos = {}
         self.boto3 = None
         self.port = cfg.get('port')
@@ -53,9 +54,10 @@ class EmeWsApp(WebsocketApp):
         method = self._endpoints_to_methods["$connect"]
         fn, sig = self._methods[method]
 
-        # todo: itt: somehow include HTTP headers, query params, requestContext
-
-        fn(route='$connect', client=client, data=SimpleNamespace())
+        # run sync
+        asyncio.ensure_future(fn(route='$connect', client=client, data=SimpleNamespace()))
+        # loop = asyncio.get_event_loop()
+        # loop.run_until_complete(coroutine)
 
     def on_disconnect(self, client, path):
         self._clients.pop(client.id, None)

@@ -4,7 +4,8 @@ from typing import Dict
 from tomcru import TomcruCfg, TomcruProject, TomcruEndpointDescriptor, TomcruApiLambdaAuthorizerDescriptor
 from tomcru.core import utils
 
-from .integration.AuthorizerIntegration import LambdaAuthorizerIntegration, ExternalLambdaAuthorizerIntegration
+from .integration.LambdaAuthorizerIntegration import LambdaAuthorizerIntegration
+from .integration.ExternalLambdaAuthorizerIntegration import ExternalLambdaAuthorizerIntegration
 from .integration.TomcruApiGWHttpIntegration import TomcruApiGWHttpIntegration, TomcruApiGWAuthorizerIntegration
 
 

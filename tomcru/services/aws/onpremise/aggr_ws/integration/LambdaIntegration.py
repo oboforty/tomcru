@@ -2,9 +2,9 @@ import inspect
 import json
 import time
 from datetime import datetime
+from urllib import parse
 
-
-from tomcru import TomcruApiDescriptor, TomcruLambdaIntegrationDescription, TomcruEndpointDescriptor
+from tomcru import TomcruLambdaIntegrationDescription
 
 from .TomcruApiGWWsIntegration import TomcruApiGWWsIntegration
 
@@ -23,7 +23,15 @@ class LambdaIntegration(TomcruApiGWWsIntegration):
     def on_request(self, **kwargs):
         evt = self.get_event(**kwargs)
 
-        if not self.auth_integ or self.auth_integ.authorize(evt, source='params'):
+        assert self.auth_integ is not None
+
+        # Api GW only authenticates at $connect, and its guaranteed to be cached afterwards
+        if '$connect' == evt['requestContext']['routeKey']:
+            _auth_ok = self.auth_integ.authorize(evt, source='params')
+        else:
+            _auth_ok = self.auth_integ.check_cached_auth(evt)
+
+        if _auth_ok:
             resp = self.lambda_builder.run_lambda(self.endpoint.lambda_id, evt, self.env)
 
             return self.parse_response(resp)
@@ -32,9 +40,9 @@ class LambdaIntegration(TomcruApiGWWsIntegration):
             pass
             raise Exception("asdasd")
 
-    def get_event(self, group=None, route=None, msid=None, user=None, data=None, client=None, token=None, **kwargs):
+    def get_event(self, client, route, data: object, group=None, msid=None, user=None, token=None, **kwargs):
         # get called lambda
-        method_name = self.app._endpoints_to_methods[route].split(':')[1]
+        #method_name = self.app._endpoints_to_methods[route].split(':')[1]
         #group_id, lamb = route.split(self.app.route_sep) if '/' in route else None, route
 
         # set env variables
@@ -43,44 +51,36 @@ class LambdaIntegration(TomcruApiGWWsIntegration):
         # create ApiGw Websocket event
         # todo: handle these data from eme WS:
         stage = "production"
-        identity = {}
+        identity = {} #todo: client.local_address & etc
         domain = "?"
-        api_id = self.app.api_name
         methodArn = self.endpoint.lambda_id
 
         if route == "$connect": eventType = "CONNECT"
         elif route == "$disconnect": eventType = "DISCONNECT"
         else: eventType = "MESSAGE"
 
-        # TODO: $ITT: call authorizer, with $connect integration
-        # todo: $ITT: get cached authorizer response?
-
         event = {
             'methodArn': methodArn,
-
             'requestContext': {
+                # client
+                "connectionId": str(client.id),
+                "connectedAt": client_info['connected_at'],
+
+                # request
                 "routeKey": route,
                 "stage": stage,
-                "apiId": api_id,
-
+                "apiId": self.app.api_name,
                 'methodArn': methodArn,
-
                 "eventType": eventType,
                 "messageDirection": "IN",
                 "messageId": msid,
                 "extendedRequestId": msid,
                 "requestId": msid,
-
-                "connectionId": str(client.id),
-                "connectedAt": client_info['connected_at'],
-
                 "requestTimeEpoch": time.time(),
                 "requestTime": datetime.utcnow().strftime("%d/%m/%Y:%H:%M:%S") + '+0000',
                 "identity": identity,
                 "domainName": domain,
             },
-            # 'queryStringParameters': dict(request.args),
-            # 'headers': dict((k.lower(), v) for k, v in request.headers.items())
             'body': json.dumps({
                 "group": group,
                 "route": route,
@@ -89,9 +89,13 @@ class LambdaIntegration(TomcruApiGWWsIntegration):
             "isBase64Encoded": False
         }
 
+        if eventType == "CONNECT":
+            event['headers'] = dict(client.request_headers)
+            event['queryStringParameters'] = dict(parse.parse_qsl(parse.urlsplit(client.path).query))
+
         return event
 
-    def parse_response(self, resp: dict):
+    async def parse_response(self, resp: dict):
         """
         Parses WS lambda integration's response. EME can return responses as 1 on 1
         :param resp: lambda integration response (2.0 format)

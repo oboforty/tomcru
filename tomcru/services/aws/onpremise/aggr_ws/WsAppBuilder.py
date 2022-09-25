@@ -1,15 +1,10 @@
-import os.path
-from typing import Dict
-
-from eme.entities import load_handlers
-from flask import request
-
-from tomcru import TomcruApiDescriptor, TomcruProject, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruApiLambdaAuthorizerDescriptor, TomcruApiAuthorizerDescriptor, TomcruLambdaIntegrationDescription
+from tomcru import TomcruApiDescriptor, TomcruProject, TomcruRouteDescriptor, TomcruLambdaIntegrationDescription
 
 from .apps.EmeWsApp import EmeWsApp
-from .integration.LambdaIntegration import LambdaIntegration
 
 from tomcru.services.aws.onpremise.aggr_api.ApiGwBuilderCore import ApiGwBuilderCore
+from .integration.LambdaIntegration import LambdaIntegration
+from .integration.WsEnRouteCachedAuthorizer import WsEnRouteCachedAuthorizer
 
 
 class WsAppBuilder(ApiGwBuilderCore):
@@ -39,6 +34,22 @@ class WsAppBuilder(ApiGwBuilderCore):
         return self.app
 
     def _build_groups(self, api):
+        _connect_authorizer = None
+
+        # find base authorizer (for connect)
+        ro: TomcruRouteDescriptor
+        for route, ro in api.routes.items():
+
+            endpoint: TomcruLambdaIntegrationDescription
+            for endpoint in ro.endpoints:
+                if endpoint.route == "$connect":
+                    _connect_authorizer = self.authorizers[endpoint.auth] if endpoint.auth else api.default_authorizer
+                    break
+            else:
+                continue
+            break # break when inner loop breaks :v
+
+        _integ_authorizer = WsEnRouteCachedAuthorizer(_connect_authorizer)
 
         # write endpoints to lambda + integrations
         ro: TomcruRouteDescriptor
@@ -46,15 +57,11 @@ class WsAppBuilder(ApiGwBuilderCore):
 
             endpoint: TomcruLambdaIntegrationDescription
             for endpoint in ro.endpoints:
-                if endpoint.route == "$connect":
-                    # connect authorizer
-                    auth = self.authorizers[endpoint.auth] if endpoint.auth else api.default_authorizer
-                else:
-                    auth = None
+                # if endpoint.route == "$connect":
 
                 if isinstance(endpoint, TomcruLambdaIntegrationDescription):
                     # build lambda integration
-                    _integration = LambdaIntegration(self.app, endpoint, auth, self.p.serv('aws:onpremise:lambda_b'), env=self.env)
+                    _integration = LambdaIntegration(self.app, endpoint, _integ_authorizer, self.p.serv('aws:onpremise:lambda_b'), env=self.env)
                 else:
                     # todo: for now we assume it's always lambda
                     raise NotImplementedError()
