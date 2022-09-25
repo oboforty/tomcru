@@ -10,7 +10,6 @@ from ..integration.LambdaWebsocketIntegration import LambdaWebsocketIntegration
 
 
 class EmeWsAppIntegrator:
-    WS_METHOD_PARAMS = ['route', 'msid', 'user', 'data', 'client', 'token']
 
     def __init__(self, project: TomcruProject, apigw_cfg):
         self.p = project
@@ -30,8 +29,6 @@ class EmeWsAppIntegrator:
         :param endpoint: endpoint url to hook to
         """
 
-        self.app._endpoints_to_methods[endpoint.endpoint] = endpoint.endpoint_id
-        # #self.app._methods[endpoint.endpoint_id] = (fn_to_call, self.WS_METHOD_PARAMS)
         #
         # # replace AWS APIGW route scheme to flask routing schema
         # _api_route = endpoint.route.replace('{', '<').replace('}', '>')

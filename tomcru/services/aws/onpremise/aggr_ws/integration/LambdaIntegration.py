@@ -6,12 +6,12 @@ from datetime import datetime
 
 from tomcru import TomcruApiDescriptor, TomcruLambdaIntegrationDescription, TomcruEndpointDescriptor
 
-from ..aggr_api_utils import TomcruApiGWHttpIntegration
+from .TomcruApiGWWsIntegration import TomcruApiGWWsIntegration
 
 
-class LambdaIntegration(TomcruApiGWHttpIntegration):
+class LambdaIntegration(TomcruApiGWWsIntegration):
 
-    def __init__(self, wsapp, endpoint: TomcruLambdaIntegrationDescription, auth: LambdaAuthorizerIntegration, lambda_builder, env=None):
+    def __init__(self, wsapp, endpoint: TomcruLambdaIntegrationDescription, auth, lambda_builder, env=None):
         self.app = wsapp
         self.endpoint = endpoint
         self.auth_integ = auth
@@ -23,7 +23,7 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
     def on_request(self, **kwargs):
         evt = self.get_event(**kwargs)
 
-        if self.auth_integ.authorize(evt, source='params'):
+        if not self.auth_integ or self.auth_integ.authorize(evt, source='params'):
             resp = self.lambda_builder.run_lambda(self.endpoint.lambda_id, evt, self.env)
 
             return self.parse_response(resp)
@@ -32,26 +32,28 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
             pass
             raise Exception("asdasd")
 
-    def get_event(self, groupHandler, group=None, route=None, msid=None, user=None, data=None, client=None, token=None, **kwargs):
+    def get_event(self, group=None, route=None, msid=None, user=None, data=None, client=None, token=None, **kwargs):
         # get called lambda
         method_name = self.app._endpoints_to_methods[route].split(':')[1]
-        group_id, lamb = route.split(self.app.route_sep)
+        #group_id, lamb = route.split(self.app.route_sep) if '/' in route else None, route
 
         # set env variables
         client_info = self.app._client_infos[client.id]
-
-        # fetch lambda from endpoint
-        lamb_fn = groupHandler.methods[method_name]
-        sig = inspect.signature(lamb_fn)
 
         # create ApiGw Websocket event
         # todo: handle these data from eme WS:
         stage = "production"
         identity = {}
         domain = "?"
-        api_id = "?"
-        methodArn = "??????????????:????"
+        api_id = self.app.api_name
+        methodArn = self.endpoint.lambda_id
 
+        if route == "$connect": eventType = "CONNECT"
+        elif route == "$disconnect": eventType = "DISCONNECT"
+        else: eventType = "MESSAGE"
+
+        # TODO: $ITT: call authorizer, with $connect integration
+        # todo: $ITT: get cached authorizer response?
 
         event = {
             'methodArn': methodArn,
@@ -63,7 +65,7 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
 
                 'methodArn': methodArn,
 
-                "eventType": "MESSAGE",
+                "eventType": eventType,
                 "messageDirection": "IN",
                 "messageId": msid,
                 "extendedRequestId": msid,

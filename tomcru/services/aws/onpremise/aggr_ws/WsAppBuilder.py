@@ -7,11 +7,13 @@ from flask import request
 from tomcru import TomcruApiDescriptor, TomcruProject, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruApiLambdaAuthorizerDescriptor, TomcruApiAuthorizerDescriptor, TomcruLambdaIntegrationDescription
 
 from .apps.EmeWsApp import EmeWsApp
-from .aggr_api_utils import ApiGwBuilderCore, TomcruApiGWHttpIntegration
 from .integration.LambdaIntegration import LambdaIntegration
+
+from tomcru.services.aws.onpremise.aggr_api.ApiGwBuilderCore import ApiGwBuilderCore
 
 
 class WsAppBuilder(ApiGwBuilderCore):
+    WS_METHOD_PARAMS = ['route', 'msid', 'user', 'data', 'client', 'token']
 
     def __init__(self, project: TomcruProject, apigw_cfg):
         super().__init__(project, apigw_cfg)
@@ -44,9 +46,11 @@ class WsAppBuilder(ApiGwBuilderCore):
 
             endpoint: TomcruLambdaIntegrationDescription
             for endpoint in ro.endpoints:
-                auth = self.authorizers[endpoint.auth] if endpoint.auth else None
-
-                _integration: TomcruApiGWHttpIntegration
+                if endpoint.route == "$connect":
+                    # connect authorizer
+                    auth = self.authorizers[endpoint.auth] if endpoint.auth else api.default_authorizer
+                else:
+                    auth = None
 
                 if isinstance(endpoint, TomcruLambdaIntegrationDescription):
                     # build lambda integration
@@ -56,4 +60,14 @@ class WsAppBuilder(ApiGwBuilderCore):
                     raise NotImplementedError()
 
                 # refer to integration (proxy controller refers to self.on_request)
-                self.integrations[endpoint] = _integration
+                #self.integrations[endpoint] = _integration
+
+                self.add_method(endpoint, _integration)
+        self.app.debug_groups({})
+
+    def add_method(self, endpoint, _integration):
+        # todo: later: do not use endpoint_id for lambda id!
+        _horrible_unique_id = endpoint.endpoint+'>'+endpoint.endpoint_id
+
+        self.app._methods[_horrible_unique_id] = (_integration.on_request, self.WS_METHOD_PARAMS)
+        self.app._endpoints_to_methods[endpoint.endpoint] = _horrible_unique_id

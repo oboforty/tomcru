@@ -11,18 +11,19 @@ class EmeAppBuilder:
         self.apis = []
         #self.opts =
 
+        # todo: add to configuration?
+        self.api2builder = {
+            'http': 'aws:onpremise:aggr_api',
+            'ws': 'aws:onpremise:aggr_ws',
+            'mocked_api': 'aws:onpremise:mocked_api',
+        }
+
     def build_app(self, env):
         self.env = env
 
         for api_name, api in self.cfg.apis.items():
-            if api.api_type == 'mocked_api':
-                # build mocked server
-                _app_serv = self.p.serv('aws:onpremise:mocked_api')
-            else:
-                _app_serv = self.p.serv('aws:onpremise:aggr_api')
-
             api.api_name = api_name
-            app = _app_serv.build_api(api_name, api, env)
+            app = self.p.serv(self.api2builder[api.api_type]).build_api(api_name, api, env)
             self.apis.append(app)
 
         return self.apis
@@ -36,3 +37,4 @@ class EmeAppBuilder:
         for app in apps:
             if not filter_apps or app.api_name in filter_apps:
                 start_flask_app(app.api_name, app, env=env, threaded=not app.api_name == main_api)
+

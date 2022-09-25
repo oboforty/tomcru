@@ -1,6 +1,7 @@
 import asyncio
 import uuid
 import time
+from types import SimpleNamespace
 
 from eme.websocket import WebsocketApp
 
@@ -48,7 +49,13 @@ class EmeWsApp(WebsocketApp):
             "connected_at": time.time()
         }
 
-        # todo call $CONNECT endpoint lambda
+        # call $CONNECT endpoint lambda
+        method = self._endpoints_to_methods["$connect"]
+        fn, sig = self._methods[method]
+
+        # todo: itt: somehow include HTTP headers, query params, requestContext
+
+        fn(route='$connect', client=client, data=SimpleNamespace())
 
     def on_disconnect(self, client, path):
         self._clients.pop(client.id, None)
