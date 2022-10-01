@@ -12,8 +12,14 @@ class BaseCfgParser:
         self.name = name
         self.cfg: TomcruCfg = None
 
+        self.subparsers = {}
+
     def create_cfg(self, path: str, pck_path):
         self.cfg = TomcruCfg(path, pck_path)
+
+    def add_parser(self, cfgpid, cfgp):
+        if not cfgp.cfg: cfgp.cfg = self.cfg
+        self.subparsers[cfgpid] = cfgp
 
     def parse_project_apis(self):
         """
@@ -112,24 +118,8 @@ class BaseCfgParser:
                 cfg_api_.routes.setdefault(route, TomcruRouteDescriptor(endpoint_integ.route, endpoint_integ.group, api_name))
                 cfg_api_.routes[route].add_endpoint(endpoint_integ)
 
-    def add_openapi_routes(self, api_name, integration=None, check_files=False):
-        from openapi_parser import parse
-
-        file = os.path.join(self.cfg.app_path, 'routes', api_name+'.yml')
-        if not os.path.exists(file): file = file[:-4] + '.yaml'
-        if not os.path.exists(file): raise Exception("File doesnt exist: " + file)
-        specification = parse(file)
-
-        for path in specification.paths:
-            group = path.url.replace('/', '_').strip('_')
-            route = path.url
-
-            for op in path.operations:
-                method = op.method.name
-
-                ep = TomcruEndpointDescriptor(group, route, method, lamb, role, layers)
-                self.cfg.apis[api_name].setdefault(route, TomcruRouteDescriptor(route, group, api_name))
-                self.cfg.apis[api_name][route].add_endpoint(ep)
+    def parser(self, p):
+        return self.subparsers[p]
 
     def add_layer(self, layer_name, files=None, packages=None, folder=None, single_file=False, in_house=True):
         self.cfg.layers.append((layer_name, files, packages, folder, single_file, in_house))

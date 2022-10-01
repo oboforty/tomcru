@@ -2,8 +2,9 @@ import os
 
 from eme.entities import load_settings
 
-from tomcru import TomcruCfg
+from ..cfgparsers.SwaggerCfgParser import SwaggerCfgParser
 from ..cfgparsers.BaseCfgParser import BaseCfgParser
+from .cfg.api import TomcruCfg
 from .modloader import load_serv
 
 
@@ -42,8 +43,8 @@ class TomcruProject:
         self.cfgparser = BaseCfgParser(self, name)
         self.cfgparser.create_cfg(self.app_path, self.pck_path)
 
-        # default services
-        # ?
+        self.cfgparser.add_parser("swagger", SwaggerCfgParser(self, name))
+
 
         return self
 

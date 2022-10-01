@@ -2,7 +2,7 @@ import json
 
 from eme.entities import EntityJSONEncoder
 
-from flask import request
+from flask import request, Response
 
 from tomcru import TomcruApiDescriptor, TomcruLambdaIntegrationDescription, TomcruEndpointDescriptor
 
@@ -10,6 +10,10 @@ from .TomcruApiGWHttpIntegration import TomcruApiGWHttpIntegration
 from .LambdaAuthorizerIntegration import LambdaAuthorizerIntegration
 from .ExternalLambdaAuthorizerIntegration import ExternalLambdaAuthorizerIntegration
 
+
+base_headers = {
+    "content-type": "application/json"
+}
 
 class LambdaIntegration(TomcruApiGWHttpIntegration):
 
@@ -24,8 +28,7 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
     def on_request(self, **kwargs):
         evt = self.get_event(**kwargs)
 
-        # @todo: cache authorizer response
-        if self.auth_integ.authorize(evt, source='headers'):
+        if not self.auth_integ or self.auth_integ.authorize(evt, source='headers'):
             resp = self.lambda_builder.run_lambda(self.endpoint.lambda_id, evt, self.env)
 
             return self.parse_response(resp)
@@ -57,14 +60,14 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
         :param resp: lambda integration response (2.0 format)
         :return: output_str, status_code
         """
+        headers = base_headers.copy()
+
         # parse response
         if isinstance(resp, dict):
             if 'body' in resp:
-                try:
-                    body = json.dumps(resp['body'])
-                except:
-                    body = resp['body']
+                body = str(resp['body'])
                 statusCode = resp.get('statusCode', 200)
+                headers.update(resp.get('headers', {}))
             else:
                 body = json.dumps(resp, cls=EntityJSONEncoder)
                 statusCode = 200
@@ -73,5 +76,11 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
             statusCode = 200
             #body, statusCode = resp.get('body', ''), resp.get('statusCode', 200)
 
-        return body, statusCode
+        # todo:
+        cookies = None
 
+        resp = Response(body, status=statusCode)
+        resp.headers = headers
+        resp.cookies = cookies
+
+        return resp

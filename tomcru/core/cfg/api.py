@@ -30,6 +30,7 @@ class TomcruApiDescriptor:
         :param api_name:
         :param api_type:
         """
+        self.spec: dict | None = None # OpenApi spec dict
         self.api_name = api_name
         self.api_type = api_type # http | ws | rest
         self.routes: Dict[str, TomcruRouteDescriptor] = {}
