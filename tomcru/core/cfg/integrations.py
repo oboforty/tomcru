@@ -20,7 +20,7 @@ class TomcruEndpointDescriptor:
         # self.role: str = role
 
     def __repr__(self):
-        return f'{self.method.upper()} {self.route} => {self.integ_id}'
+        return f'<{self.__name__} {self.method.upper()} {self.route} => {self.integ_id}>'
 
     def __hash__(self):
         # @TODO: append with api name

@@ -89,6 +89,7 @@ class BaseCfgParser:
             # map ini to tomcru descriptor
             cfg_api_.swagger_enabled = cfg.get('swagger_enabled', False)
             cfg_api_.swagger_ui = cfg.get('swagger_ui', False)
+            cfg_api_.swagger_check_models = cfg.get('swagger_check_models', False)
             cfg_api_.default_authorizer = cfg.get('default_authorizer', None)
             cfg_api_.enabled = cfg.get('enabled', True)
 

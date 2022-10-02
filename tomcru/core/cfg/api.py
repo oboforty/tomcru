@@ -38,6 +38,7 @@ class TomcruApiDescriptor:
         self.swagger_enabled = False
         self.swagger_ui = False
         self.swagger_file: str | None = None
+        self.swagger_check_models = None
         self.authorizers: Set[str] = set()
 
         self.enabled = True
@@ -46,7 +47,7 @@ class TomcruApiDescriptor:
         self.default_layers = []
 
     def __repr__(self):
-        return f'{self.api_type.upper()} - {self.api_name}'
+        return f'<{self.__name__} {self.api_type.upper()} - {self.api_name}>'
 
 
 class TomcruRouteDescriptor:
@@ -67,5 +68,4 @@ class TomcruRouteDescriptor:
         self.endpoints.append(ep)
 
     def __repr__(self):
-        return f'{self.route} ({self.group})'
-
+        return f'<{self.__name__} {self.route} ({self.group})>'

@@ -98,10 +98,13 @@ class ApiBuilder(ApiGwBuilderCore):
         :return: flask response obj
         """
         # get called endpoint
-        ep = self.get_called_endpoint(**kwargs)
+        ep, api = self.get_called_endpoint(**kwargs)
         integ = self.integrations[ep]
 
         response = integ.on_request(**kwargs)
+
+        if api.swagger_check_models:
+            self.p.serv("aws:onpremise:model_checker").check_response(api, ep, response, env=self.env)
 
         # HTTP in flask needs a return response, et voilà
         return response
@@ -112,6 +115,7 @@ class ApiBuilder(ApiGwBuilderCore):
         return self.app
 
     def load_eme_handlers(self, _controllers, _index=None):
+
         # add api index controller
         if _index is None:
             _index = "Home:get_index"
@@ -149,7 +153,7 @@ class ApiBuilder(ApiGwBuilderCore):
         # todo: but isn't this the exact same as request.endpoint?
         return f'{group}:{method.lower()}_{integ_id}'
 
-    def get_called_endpoint(self) -> TomcruEndpointDescriptor:
+    def get_called_endpoint(self, **kwargs) -> TomcruEndpointDescriptor:
         aws_url_rule = str(request.url_rule).replace('<', '{').replace('>', '}')
 
         # todo: @later: maybe we can optimize by fetching api directly
@@ -158,4 +162,4 @@ class ApiBuilder(ApiGwBuilderCore):
 
         endpoint = next(filter(lambda x: x.endpoint_id == request.endpoint, route.endpoints), None)
 
-        return endpoint
+        return endpoint, api
