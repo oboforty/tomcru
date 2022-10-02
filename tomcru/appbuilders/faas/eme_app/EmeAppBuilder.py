@@ -22,6 +22,10 @@ class EmeAppBuilder:
         self.env = env
 
         for api_name, api in self.cfg.apis.items():
+
+            if not api.enabled:
+                continue
+
             api.api_name = api_name
             app = self.p.serv(self.api2builder[api.api_type]).build_api(api_name, api, env)
             self.apis.append(app)
@@ -37,4 +41,3 @@ class EmeAppBuilder:
         for app in apps:
             if not filter_apps or app.api_name in filter_apps:
                 start_flask_app(app.api_name, app, env=env, threaded=not app.api_name == main_api)
-

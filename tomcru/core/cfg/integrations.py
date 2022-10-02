@@ -1,7 +1,8 @@
+import os
 
 
 class TomcruEndpointDescriptor:
-    def __init__(self, group, route, method):
+    def __init__(self, group, route, method, auth=None):
         """
 
         :param group:
@@ -11,6 +12,7 @@ class TomcruEndpointDescriptor:
         self.route: str = route
         self.method: str = method
         self.group = group
+        self.auth = auth
 
         # self.integration: TomcruEndpointIntegration
         # self.lamb: str = lamb
@@ -50,12 +52,11 @@ class TomcruLambdaIntegrationDescription(TomcruEndpointDescriptor):
         :param role:
         :param auth:
         """
-        super().__init__(group, route, method)
+        super().__init__(group, route, method, auth)
 
         self.lamb = lamb_name
         self.layers = layers
         self.role = role
-        self.auth = auth
 
     @property
     def integ_id(self):
@@ -74,3 +75,32 @@ class TomcruLambdaIntegrationDescription(TomcruEndpointDescriptor):
         yield self.layers
         yield self.role
 
+
+class TomcruSwaggerIntegration(TomcruEndpointDescriptor):
+    def __init__(self, group, route, method, auth, type):
+        """
+
+        :param group:
+        :param route:
+        :param method:
+        :param auth:
+        :param type:
+        """
+        super().__init__(group, route, method, auth)
+
+        self.type = type
+        if self.type == 'spec':
+            _, req_content = os.path.splitext(self.route)
+            self.req_content = req_content.lstrip('.')
+        elif self.type == 'ui':
+            self.req_content = 'html'
+        else:
+            raise Exception(type)
+
+    @property
+    def integ_id(self):
+        return self.type + '_' + self.req_content
+
+    @property
+    def method_name(self):
+        return f'{self.method.lower()}_{self.integ_id}'

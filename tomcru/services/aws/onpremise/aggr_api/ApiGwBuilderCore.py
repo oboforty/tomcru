@@ -20,7 +20,7 @@ class ApiGwBuilderCore:
         self.boto3_builder = self.p.serv('aws:onpremise:boto3_b')
         self.integrations: Dict[TomcruEndpointDescriptor, TomcruApiGWHttpIntegration] = {}
         self.authorizers: Dict[str, TomcruApiGWAuthorizerIntegration] = {}
-        self.env: str = None
+        self.env: str | None = None
         self.app = None
 
     def _build_authorizers(self):

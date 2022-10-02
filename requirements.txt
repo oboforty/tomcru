@@ -2,3 +2,4 @@ eme
 prance
 apispec
 botocore
+flask-swagger-ui

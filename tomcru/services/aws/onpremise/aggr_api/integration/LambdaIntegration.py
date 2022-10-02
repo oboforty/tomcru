@@ -15,6 +15,7 @@ base_headers = {
     "content-type": "application/json"
 }
 
+
 class LambdaIntegration(TomcruApiGWHttpIntegration):
 
     def __init__(self, endpoint: TomcruLambdaIntegrationDescription, auth: LambdaAuthorizerIntegration, lambda_builder, env=None):

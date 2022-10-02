@@ -1,13 +1,15 @@
 import os.path
+from typing import Dict
 
 from eme.entities import load_handlers
 from flask import request
 
-from tomcru import TomcruApiDescriptor, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruLambdaIntegrationDescription
+from tomcru import TomcruApiDescriptor, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruLambdaIntegrationDescription, TomcruSwaggerIntegration
 from .ApiGwBuilderCore import ApiGwBuilderCore
 
 from .controllers.EmeProxyController import EmeProxyController
 from .controllers.HomeController import HomeController
+from .integration.SwaggerIntegration import SwaggerIntegration, integrate_swagger_ui_blueprint
 
 from .integration.TomcruApiGWHttpIntegration import TomcruApiGWHttpIntegration
 from .integration.LambdaIntegration import LambdaIntegration
@@ -31,9 +33,9 @@ class ApiBuilder(ApiGwBuilderCore):
         self._inject_dependencies()
 
         self._build_authorizers()
-        _controllers = self._build_controllers(api)
+        _controllers, _index = self._build_controllers(api)
 
-        self.load_eme_handlers(_controllers)
+        self.load_eme_handlers(_controllers, _index)
 
         self._clean_dependencies()
 
@@ -43,13 +45,15 @@ class ApiBuilder(ApiGwBuilderCore):
 
         # build controllers
         _controllers = {}
+        _index = None
+        _swagger: Dict[str, TomcruSwaggerIntegration | None] = {"json": None, "html": None, "yaml": None}
 
         # write endpoints to lambda + integrations
         ro: TomcruRouteDescriptor
         for route, ro in api.routes.items():
             _controllers.setdefault(ro.group, EmeProxyController(ro.group, self.on_request))
 
-            endpoint: TomcruLambdaIntegrationDescription
+            endpoint: TomcruEndpointDescriptor
             for endpoint in ro.endpoints:
                 auth = self.authorizers[endpoint.auth] if endpoint.auth else None
 
@@ -58,6 +62,13 @@ class ApiBuilder(ApiGwBuilderCore):
                 if isinstance(endpoint, TomcruLambdaIntegrationDescription):
                     # build lambda integration
                     _integration = LambdaIntegration(endpoint, auth, self.p.serv('aws:onpremise:lambda_b'), env=self.env)
+                elif isinstance(endpoint, TomcruSwaggerIntegration):
+                    _swagger[endpoint.req_content] = endpoint
+
+                    if endpoint.req_content != 'html':
+                        _integration = SwaggerIntegration(api, endpoint, auth, env=self.env)
+                    else:
+                        continue
                 else:
                     # todo: for now we assume it's always lambda
                     raise NotImplementedError()
@@ -70,7 +81,15 @@ class ApiBuilder(ApiGwBuilderCore):
                 # app type dependent integration (eme-webapp | flask | fastapi | eme-websocket)
                 self.add_method(endpoint)
 
-        return _controllers
+                if endpoint.route == '/':
+                    _index = endpoint.endpoint_id
+
+        # create swagger UI (both ui and json endpoints are needed)
+        if api.swagger_enabled and api.swagger_ui and _swagger:
+            # todo: integrate with yaml too? can this be decided? does swagger UI allow even?
+            integrate_swagger_ui_blueprint(self.app, _swagger['json'], _swagger['html'])
+
+        return _controllers, _index
 
     def on_request(self, **kwargs):
         """
@@ -92,10 +111,13 @@ class ApiBuilder(ApiGwBuilderCore):
 
         return self.app
 
-    def load_eme_handlers(self, _controllers):
+    def load_eme_handlers(self, _controllers, _index=None):
         # add api index controller
-        webcfg = {"__index__": "Home:get_index"}
-        _controllers['Home'] = HomeController(self.app)
+        if _index is None:
+            _index = "Home:get_index"
+            _controllers['Home'] = HomeController(self.app)
+
+        webcfg = {"__index__": _index}
 
         # @TODO: @later: add swagger pages? generate them or what?
         self.app.load_controllers(_controllers, webcfg)
@@ -128,11 +150,12 @@ class ApiBuilder(ApiGwBuilderCore):
         return f'{group}:{method.lower()}_{integ_id}'
 
     def get_called_endpoint(self) -> TomcruEndpointDescriptor:
-        # @TODO: how to fetch right api?
-        api = next(iter(self.cfg.apis.values()))
         aws_url_rule = str(request.url_rule).replace('<', '{').replace('>', '}')
 
+        # todo: @later: maybe we can optimize by fetching api directly
+        api = next(filter(lambda x: aws_url_rule in x.routes, self.cfg.apis.values()))
         route = api.routes[aws_url_rule]
+
         endpoint = next(filter(lambda x: x.endpoint_id == request.endpoint, route.endpoints), None)
 
         return endpoint

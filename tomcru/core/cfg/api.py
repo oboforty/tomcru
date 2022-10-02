@@ -37,11 +37,17 @@ class TomcruApiDescriptor:
 
         self.swagger_enabled = False
         self.swagger_ui = False
+        self.swagger_file: str | None = None
         self.authorizers: Set[str] = set()
 
+        self.enabled = True
         self.default_authorizer = None
         self.default_role = None
         self.default_layers = []
+
+    def __repr__(self):
+        return f'{self.api_type.upper()} - {self.api_name}'
+
 
 class TomcruRouteDescriptor:
 

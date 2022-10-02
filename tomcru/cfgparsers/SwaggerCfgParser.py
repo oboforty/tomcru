@@ -34,6 +34,10 @@ class SwaggerCfgParser:
         # #specification = yaml_utils.load_operations_from_docstring()
         cfg_api_ = self.cfg.apis.setdefault(api_name, TomcruApiDescriptor(api_name, 'http'))
         cfg_api_.spec = dict(f.specification)
+        cfg_api_.swagger_file = file
+
+        # if not cfg_api_.enabled:
+        #     return
 
         for route, path in f.specification['paths'].items():
             #group = route.replace('/', '_').strip('_')

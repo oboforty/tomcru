@@ -3,14 +3,14 @@ import os
 from eme.entities import load_settings
 
 from tomcru import TomcruCfg, TomcruRouteDescriptor, TomcruEndpointDescriptor, TomcruApiDescriptor, \
-    TomcruApiLambdaAuthorizerDescriptor, TomcruLambdaIntegrationDescription, TomcruApiAuthorizerDescriptor
+    TomcruApiLambdaAuthorizerDescriptor, TomcruLambdaIntegrationDescription, TomcruApiAuthorizerDescriptor, TomcruSwaggerIntegration
 
 
 class BaseCfgParser:
     def __init__(self, project, name):
         self.proj = project
         self.name = name
-        self.cfg: TomcruCfg = None
+        self.cfg: TomcruCfg | None = None
 
         self.subparsers = {}
 
@@ -82,6 +82,7 @@ class BaseCfgParser:
             print(f"Processing api: {api_name}")
 
             cfg = {**cfg_all_, **cfg}
+
             #cfg_api_ = self.cfg.apis.setdefault(api_name, TomcruApiDescriptor(api_name, _api_type))
             cfg_api_ = self.cfg.apis[api_name] = TomcruApiDescriptor(api_name, _api_type)
 
@@ -89,6 +90,7 @@ class BaseCfgParser:
             cfg_api_.swagger_enabled = cfg.get('swagger_enabled', False)
             cfg_api_.swagger_ui = cfg.get('swagger_ui', False)
             cfg_api_.default_authorizer = cfg.get('default_authorizer', None)
+            cfg_api_.enabled = cfg.get('enabled', True)
 
     def add_eme_routes(self, file, integration, check_files=False):
         assert integration is not None
@@ -103,6 +105,9 @@ class BaseCfgParser:
                 raise Exception("HTTPv1 not supported")
 
             cfg_api_ = self.cfg.apis.setdefault(api_name, TomcruApiDescriptor(api_name, _api_type))
+
+            # if not cfg_api_.enabled:
+            #     continue
 
             print(f"Processing routes: {api_name}")
             for endpoint, integ_opts in api.items():
@@ -138,11 +143,12 @@ class BaseCfgParser:
         integ_type, integ_id = integ_opts[0].split(':')
 
         apicfg = self.cfg.apis[api_name]
+        auth = self._get_param(integ_opts, 'auth', apicfg.default_authorizer)
+        if not auth: auth = None
 
         if 'lambda' == integ_type or 'l' == integ_type:
             group, lamb_name = integ_id.split('/')
 
-            auth = self._get_param(integ_opts, 'auth', apicfg.default_authorizer)
             layers = self._get_param(integ_opts, 'layers', apicfg.default_layers)
             role = self._get_param(integ_opts, 'role', apicfg.default_role)
 
@@ -150,7 +156,6 @@ class BaseCfgParser:
             if isinstance(layers, str):
                 layers = layers.split("|")
             if len(layers) > 0 and layers[0] == '': layers = layers.pop(0)
-            if not auth: auth = None
 
             # override
 
@@ -163,6 +168,8 @@ class BaseCfgParser:
 
             # Lambda integration
             integ = TomcruLambdaIntegrationDescription(group, route, method, lamb_name, layers, role, auth)
+        elif 'swagger' == integ_type:
+            integ = TomcruSwaggerIntegration('swagger', route, method, auth, integ_id)
         else:
             raise Exception(f"Integration {integ_type} not recognized!")
 
