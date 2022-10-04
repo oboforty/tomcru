@@ -19,16 +19,16 @@ from .apps.EmeWebApi import EmeWebApi
 
 class ApiBuilder(ApiGwBuilderCore):
 
-    def build_api(self, api_name, api: TomcruApiDescriptor, env: str):
+    def build_api(self, api: TomcruApiDescriptor, env: str):
         self.env = env
 
         # build eme app object
         apiopts = self.apigw_cfg.get('__default__', {})
-        apiopts.update(self.apigw_cfg.get(api_name, {}))
+        apiopts.update(self.apigw_cfg.get(api.api_name, {}))
 
         # todo: @LATER: decide between implementation detail, e.g. fastapi | flask | eme-flask
         #app_type = apiopts['app_type']
-        app = self.create_app(api_name, apiopts)
+        app = self.create_app(api.api_name, apiopts)
 
         self._inject_dependencies()
 

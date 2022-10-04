@@ -1,7 +1,7 @@
 import os
 
 from apispec import APISpec
-from prance import ResolvingParser
+from prance import ResolvingParser, BaseParser
 
 
 from tomcru import TomcruCfg, TomcruRouteDescriptor, TomcruEndpointDescriptor, TomcruApiDescriptor, \
@@ -22,7 +22,8 @@ class SwaggerCfgParser:
         if not os.path.exists(file): file = file[:-4] + '.yml'
         if not os.path.exists(file): raise Exception("File doesnt exist: " + file)
 
-        f = ResolvingParser(file)
+        f_resolved = ResolvingParser(file)
+        f = BaseParser(file)
         # spec = APISpec(
         #     title=f.specification['info']['title'],
         #     version=f.specification['info']['version'],
@@ -33,7 +34,10 @@ class SwaggerCfgParser:
         # specification = yaml_utils.load_yaml_from_docstring(content)
         # #specification = yaml_utils.load_operations_from_docstring()
         cfg_api_ = self.cfg.apis.setdefault(api_name, TomcruApiDescriptor(api_name, 'http'))
-        cfg_api_.spec = dict(f.specification)
+        # cfg_api_.spec = {k: f.specification[k] for k in sorted(f.specification)} # add dict in key order
+        # cfg_api_.spec_resolved_schemas = {k: f_resolved.specification[k] for k in sorted(f_resolved.specification)}
+        cfg_api_.spec = dict(f.specification) # add dict in key order
+        cfg_api_.spec_resolved_schemas = dict(f_resolved.specification)
         cfg_api_.swagger_file = file
 
         # if not cfg_api_.enabled:

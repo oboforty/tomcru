@@ -31,6 +31,11 @@ class TomcruEndpointDescriptor:
         # eme-like endpoint id (group & method name from lambda)
         return f'{self.group}:{self.method.lower()}_{self.integ_id}'
 
+    @staticmethod
+    def get_endpoint_id(group, method, integ_id):
+        # eme-like endpoint id (group & method name from lambda)
+        return f'{group}:{method.lower()}_{integ_id}'
+
     @property
     def is_http(self):
         return not self.method or self.method == 'ws'

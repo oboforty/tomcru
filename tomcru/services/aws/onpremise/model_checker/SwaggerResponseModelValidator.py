@@ -15,7 +15,7 @@ class SwaggerResponseModelValidator:
     def check_response(self, api: TomcruApiDescriptor, ep: TomcruEndpointDescriptor, response: Response, env: str):
         content_type = response.headers['content-type']
 
-        ep_model = api.spec['paths'][ep.route][ep.method.lower()]
+        ep_model = api.spec_resolved_schemas['paths'][ep.route][ep.method.lower()]
 
         req_model = ep_model['parameters']
         self._validate_request(request, req_model)

@@ -52,7 +52,12 @@ class TomcruProject:
         app_type, app_implement = app_type.split(':')
         path = os.path.join(self.cfg.pck_path, 'appbuilders', app_type.lower())
         self.env = env
-        app_builder = load_serv(path, app_implement).app_builder(self, env, **kwargs)
+
+        app_builder_factory = load_serv(path, app_implement.lower())
+
+        if not app_builder_factory:
+            raise Exception(f"AppBuilder {app_type}:{app_implement} not found")
+        app_builder = app_builder_factory.app_builder(self, env, **kwargs)
 
         if not hasattr(app_builder, 'build_app'):
             raise Exception(f'App {app_type} does not have build_app! Path: {path}:{app_implement}')
@@ -66,13 +71,9 @@ class TomcruProject:
 
     def load_serv(self, name, srv=None):
         n = name.split(':')
-        if len(n) == 3:
-            vendor, aim, service = n
-        elif len(n) == 2:
-            vendor, service = n
-            aim = 'default'
-        else:
-            raise Exception("No, don’t let him gonna, no don’t wanna")
+        vendor, aim, service = n
+        if not aim: aim = ''
+        if not vendor: vendor = 'general'
 
         if srv is None:
             search_path = os.path.join(self.cfg.pck_path, 'services', vendor, aim)
@@ -99,13 +100,9 @@ class TomcruProject:
 
     def load_serv_cfg(self, name):
         n = name.split(':')
-        if len(n) == 3:
-            vendor, aim, service = n
-        elif len(n) == 2:
-            vendor, service = n
-            aim = 'default'
-        else:
-            raise Exception("No, don’t let him gonna, no don’t wanna")
+        vendor, aim, service = n
+        if not aim: aim = ''
+        if not vendor: vendor = 'general'
 
         builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, self.env, aim, service + '.ini')
         if not os.path.exists(builder_cfg_file):

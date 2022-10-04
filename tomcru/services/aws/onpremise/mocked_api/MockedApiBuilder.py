@@ -15,18 +15,18 @@ class MockedApiBuilder:
 
         self.env: str = None
 
-    def build_api(self, api_name, api: TomcruApiDescriptor, env: str):
+    def build_api(self, api: TomcruApiDescriptor, env: str):
         self.env = env
 
         api_cfg = self.mock_cfg['__default__'].copy()
-        api_cfg.update(self.mock_cfg[api_name])
+        api_cfg.update(self.mock_cfg[api.api_name])
 
         authorizer_mock = api_cfg.get('for_authorizer', api.default_authorizer)
 
         with open(os.path.join(self.mock_cfg['__fileloc__'], authorizer_mock+'_apimock.json')) as fh:
             self.resp = json.load(fh)
 
-        app = self.mock_server_builder(api_name)
+        app = self.mock_server_builder(api.api_name)
 
         app.host = api_cfg.get('host', 'localhost')
         app.port = api_cfg.get('port', 5000)

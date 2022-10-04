@@ -33,7 +33,6 @@ class EmeWsAppIntegrator:
         # # replace AWS APIGW route scheme to flask routing schema
         # _api_route = endpoint.route.replace('{', '<').replace('}', '>')
         # self.app._custom_routes[endpoint.endpoint_id].add(_api_route)
-        print(1)
 
     def load_eme_handlers(self, groups):
         webcfg = {}

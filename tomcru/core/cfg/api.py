@@ -18,9 +18,10 @@ class TomcruCfg:
 
         self.tasks = {}
         self.apis: Dict[str, TomcruApiDescriptor] = {}
-        #self.lambdas = set()
-        self.layers = []
         self.authorizers: Dict[str, TomcruApiAuthorizerDescriptor] = {}
+
+        self.lambdas = {}
+        self.layers = []
 
 
 class TomcruApiDescriptor:
@@ -30,18 +31,23 @@ class TomcruApiDescriptor:
         :param api_name:
         :param api_type:
         """
-        self.spec: dict | None = None # OpenApi spec dict
         self.api_name = api_name
         self.api_type = api_type # http | ws | rest
-        self.routes: Dict[str, TomcruRouteDescriptor] = {}
 
+        # Api configuration:
+        self.enabled = True
+        self.routes: Dict[str, TomcruRouteDescriptor] = {}
+        #self.authorizers: Set[str] = set()
+
+        # OpenApi spec dict
+        self.spec: dict | None = None
+        self.spec_resolved_schemas: dict | None = None
         self.swagger_enabled = False
         self.swagger_ui = False
         self.swagger_file: str | None = None
         self.swagger_check_models = None
-        self.authorizers: Set[str] = set()
 
-        self.enabled = True
+        # default integration values
         self.default_authorizer = None
         self.default_role = None
         self.default_layers = []

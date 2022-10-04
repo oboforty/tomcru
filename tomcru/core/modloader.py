@@ -10,8 +10,13 @@ def load_serv(path, name):
     # except ImportError as e:
     #     raise e
 
-    sys.path.append(path)
-    m = import_module(name)
-    sys.path.remove(path)
+    try:
+        sys.path.append(path)
+        m = import_module(name)
+        sys.path.remove(path)
+    except Exception as e:
+        if hasattr(e, 'name') and e.name == name:
+            return None
+        raise e
 
     return m

@@ -13,10 +13,10 @@ paths:
       operationId: listPets
       x-lambda:
         lambda-id: pets/GetList
-#        role: asd
-#        layers:
-#          - asd
-#          - esd
+        role: asd
+        layers:
+          - asd
+          - esd
       tags:
         - pets
       parameters:
