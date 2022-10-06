@@ -2,8 +2,7 @@ import os.path
 import json
 from io import StringIO
 
-import yaml
-
+from tomcru.yaml_custom import yaml
 
 def handler(event, context):
     api_name = event['queryStringParameters']['api_name']

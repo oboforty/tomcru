@@ -45,23 +45,23 @@ class TomcruProject:
 
         self.cfgparser.add_parser("swagger", SwaggerCfgParser(self, name))
 
-
         return self
 
-    def build_app(self, app_type, env,  **kwargs):
+    def app_builder(self, app_type, **kwargs):
         app_type, app_implement = app_type.split(':')
         path = os.path.join(self.cfg.pck_path, 'appbuilders', app_type.lower())
-        self.env = env
 
         app_builder_factory = load_serv(path, app_implement.lower())
-
         if not app_builder_factory:
             raise Exception(f"AppBuilder {app_type}:{app_implement} not found")
-        app_builder = app_builder_factory.app_builder(self, env, **kwargs)
 
-        if not hasattr(app_builder, 'build_app'):
-            raise Exception(f'App {app_type} does not have build_app! Path: {path}:{app_implement}')
-        return app_builder.build_app(env), app_builder.run_apps
+        if 'env' in kwargs:
+            self.env = kwargs['env']
+        app_builder = app_builder_factory.app_builder(self, **kwargs)
+        # if not hasattr(app_builder, 'build_app'):
+        #     raise Exception(f'App {app_type} does not have build_app! Path: {path}:{app_implement}')
+
+        return app_builder
 
     def serv(self, name):
         if name not in self.services:

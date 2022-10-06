@@ -85,7 +85,7 @@ class ApiBuilder(ApiGwBuilderCore):
                     _index = endpoint.endpoint_id
 
         # create swagger UI (both ui and json endpoints are needed)
-        if api.swagger_enabled and api.swagger_ui and _swagger:
+        if api.swagger_enabled and api.swagger_ui and _swagger and all(_swagger.values()):
             # todo: integrate with yaml too? can this be decided? does swagger UI allow even?
             integrate_swagger_ui_blueprint(self.app, _swagger['json'], _swagger['html'])
 
@@ -99,12 +99,20 @@ class ApiBuilder(ApiGwBuilderCore):
         """
         # get called endpoint
         ep, api = self.get_called_endpoint(**kwargs)
+        print(repr(api), '     ', repr(ep))
         integ = self.integrations[ep]
 
         response = integ.on_request(**kwargs)
 
-        if api.swagger_check_models:
-            self.p.serv("aws:onpremise:model_checker").check_response(api, ep, response, env=self.env)
+        if api.swagger_check_models and api.spec_resolved_schemas:
+            try:
+                self.p.serv("aws:onpremise:model_checker").check_response(api, ep, response, env=self.env)
+            except Exception as e:
+                if self.env == 'dev' or self.env == 'debug':
+                    raise e
+                else:
+                    print("!! Swagger model checker raised an exception: ", str(e))
+
 
         # HTTP in flask needs a return response, et voilà
         return response

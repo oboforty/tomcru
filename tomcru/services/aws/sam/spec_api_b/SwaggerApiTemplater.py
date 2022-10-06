@@ -1,7 +1,5 @@
-import yaml
-
 from tomcru import TomcruProject, TomcruApiDescriptor, TomcruEndpointDescriptor, TomcruLambdaIntegrationDescription, TomcruApiLambdaAuthorizerDescriptor
-from tomcru.utils import Ref, GetAtt, Join
+from tomcru.yaml_custom import Ref, GetAtt, Join
 
 
 class SwaggerApiTemplater:
@@ -53,9 +51,24 @@ class SwaggerApiTemplater:
                         'authorizerCredentials': Ref(role_id),
                     }
 
-                    # if 'external' == auth.lambda_source:
-                    #     authArnParamId = auth.auth_id+'Arn'
-                    #     auth_integ['authorizerUri'] = Join(f'["", ["arn:aws:apigateway:", Ref: "AWS::Region",":lambda:path/2015-03-31/functions/", Ref: "{authArnParamId}", "/invocations"]'),
+                    if 'external' == auth.lambda_source:
+                        arn = self.opts['external_authorizers'][auth.auth_id]
+                        auth_arn_param_id = self.param_builder.store(auth.auth_id+'Arn', arn)
+
+                        #auth_integ['authorizerCredentials'] = Join(f'["", ["arn:aws:apigateway:", Ref: "AWS::Region",":lambda:path/2015-03-31/functions/", Ref: "{auth_arn_param_id}", "/invocations"]]')
+                        #auth_integ['authorizerCredentials'] = Join("tess")
+
+                        auth_integ['authorizerCredentials'] = Join(["", [
+                            "arn:aws:apigateway:",
+                            Ref("AWS::Region"),
+                            ":lambda:path/2015-03-31/functions/",
+                            Ref(auth_arn_param_id),
+                            "/invocations"
+                        ]])
+                    else:
+                        self.lambda_builder.add_lambda(auth.lambda_id)
+
+                        auth_integ['authorizerCredentials'] = auth.lambda_id.replace('/', '_')+'.Arn'
                 else:
                     raise NotImplementedError(str(type(auth)))
 

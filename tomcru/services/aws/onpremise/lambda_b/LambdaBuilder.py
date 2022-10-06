@@ -29,9 +29,6 @@ class LambdaBuilder:
         # configure env variables
         self.set_env_for(lambda_id, env)
 
-
-        #_f = utils.inject(None, _lambd_path)
-
         # ensure that only local packages are loaded; and packages with the same name from other  lambdas aren't
         _ctx_orig = dict(sys.modules)
 
@@ -43,8 +40,6 @@ class LambdaBuilder:
         # restore loaded modules
         sys.modules.clear()
         sys.modules.update(_ctx_orig)
-
-        #utils.clean_inject(_f)
 
         fn = module.handler
         self.lambdas[lambda_id] = fn

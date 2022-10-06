@@ -30,15 +30,12 @@ class Eme2Swagger:
             auth = self.cfg.authorizers[authorizer_id]
 
             if isinstance(auth, TomcruApiLambdaAuthorizerDescriptor):
+                # no need to define it further than this at this level
                 auth_integ = {
                     'type': 'apiKey',
                     'name': auth.auth_id,
                     'in': "header"
                 }
-
-                # no need to define it further than this at this level
-                # if 'external' == auth.lambda_source:
-                # else:
             else:
                 # todo: support more authorizers
                 raise NotImplementedError()

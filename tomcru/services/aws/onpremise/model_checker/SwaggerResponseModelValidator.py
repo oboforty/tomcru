@@ -1,7 +1,7 @@
 import os
 import json
 
-from tomcru import TomcruApiDescriptor, TomcruProject, TomcruEndpointDescriptor
+from tomcru import TomcruApiDescriptor, TomcruProject, TomcruEndpointDescriptor, TomcruSwaggerIntegration
 
 from flask import Flask, request, jsonify, Response, Request
 
@@ -13,9 +13,17 @@ class SwaggerResponseModelValidator:
         self.p = project
 
     def check_response(self, api: TomcruApiDescriptor, ep: TomcruEndpointDescriptor, response: Response, env: str):
-        content_type = response.headers['content-type']
+        if isinstance(ep, TomcruSwaggerIntegration):
+            # ignore all swagger endpoints, no need to validate
+            return
 
-        ep_model = api.spec_resolved_schemas['paths'][ep.route][ep.method.lower()]
+        content_type = response.headers['content-type']
+        _paths = api.spec_resolved_schemas['paths']
+
+        if ep.route not in _paths:
+            self.log_warning("Not in paths")
+
+        ep_model = _paths[ep.route][ep.method.lower()]
 
         req_model = ep_model['parameters']
         self._validate_request(request, req_model)
@@ -95,3 +103,6 @@ class SwaggerResponseModelValidator:
                 }
             }
         }
+
+    def log_warning(self, err):
+        print(err)

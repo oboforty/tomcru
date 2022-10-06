@@ -4,6 +4,8 @@ import testlayer
 
 
 def handler(event, context):
+
+
     return {
         "testlayer": testlayer.get_id(),
         "boto3_mocked": hasattr(boto3, '__TOMCRU__'),

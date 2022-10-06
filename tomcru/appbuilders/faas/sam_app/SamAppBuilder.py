@@ -1,41 +1,24 @@
 import os
-import yaml
 
 from tomcru import TomcruProject, TomcruApiLambdaAuthorizerDescriptor
+from tomcru.yaml_custom import yaml
 
 
 class SamAppBuilder:
 
-    def __init__(self, project: TomcruProject, env, **kwargs):
+    def __init__(self, project: TomcruProject, **kwargs):
         self.p = project
         self.cfg = project.cfg
-        self.env = env
         self.apis = []
         #self.opts =
 
         self.param_builder = project.serv('aws:sam:params_b')
 
     def build_app(self, env):
-        self.env = env
-
+        self.p.env = env
         lambda_builder = self.p.serv('aws:sam:lambda_b')
 
         sam_tpl: dict = self.build_app_stack(env)
-
-        # build parameters - @later: move this logic somewhere else?
-        authorizer_opts = self.p.serv('aws:sam:spec_api_b').opts['external_authorizers']
-
-        for auth in self.cfg.authorizers:
-            if isinstance(auth, TomcruApiLambdaAuthorizerDescriptor):
-                if 'external' == auth.lambda_source:
-                    # keep external authorizers in params
-                    authArnParamId = auth.auth_id + 'Arn'
-                    arn = authorizer_opts[auth]
-
-                    sam_tpl['parameters'][authArnParamId] = {
-                        'Type': 'String',
-                        'Default': arn
-                    }
 
         # buidl globals
         sam_tpl['Globals']['Function'] = lambda_builder.build_lambda_globals()
@@ -65,7 +48,7 @@ class SamAppBuilder:
 
         # now save SAM yaml to file
         with open(os.path.join(self.cfg.app_path, 'template.yaml'), 'w') as fh:
-            yaml.dump(sam_tpl, stream=fh, sort_keys = False, default_flow_style = False)
+            yaml.dump(sam_tpl, stream=fh)
             print("Saved to template.yaml!")
 
     def run_apps(self):
@@ -90,10 +73,10 @@ class SamAppBuilder:
         return tpl
 
     def _sort_keys_tpl(self, tpl):
-        # SAM_KEYS_ORDER = ['AWSTemplateFormatVersion', 'Transform', 'Description', 'Parameters', 'Globals', 'Resources']
+        SAM_KEYS_ORDER = ['AWSTemplateFormatVersion', 'Transform', 'Description', 'Parameters', 'Globals', 'Resources']
         # RES_KEYS_ORDER = ['Type', 'Parameters']
         #
-        # tpl = {k: tpl[k] for k in sorted(tpl, key=lambda x: SAM_KEYS_ORDER.index(x) if x in SAM_KEYS_ORDER else 1000)}
+        tpl = {k: tpl[k] for k in sorted(tpl, key=lambda x: SAM_KEYS_ORDER.index(x) if x in SAM_KEYS_ORDER else 1000)}
 
         AWSSAM_RES_TYPE_ORDER = [
             'AWS::Serverless::LayerVersion',

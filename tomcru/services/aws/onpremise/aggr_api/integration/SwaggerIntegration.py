@@ -1,7 +1,9 @@
 import json
 import os
+from io import StringIO
 
-import yaml
+#import yaml
+from tomcru.yaml_custom import yaml
 from eme.entities import EntityJSONEncoder
 
 from flask import request, Response, Flask, jsonify
@@ -48,7 +50,9 @@ class SwaggerIntegration(TomcruApiGWHttpIntegration):
         if 'json' == endpoint.req_content:
             self.swagger_content = json.dumps(api.spec)
         else:
-            self.swagger_content = yaml.dump(api.spec, allow_unicode=True)
+            sth = StringIO()
+            yaml.dump(api.spec, stream=sth)
+            self.swagger_content = sth.getvalue()
 
 
 def integrate_swagger_ui_blueprint(app: Flask, swagger_endpoint: TomcruSwaggerIntegration, ui_endpoint: TomcruSwaggerIntegration):

@@ -53,7 +53,7 @@ class TomcruApiDescriptor:
         self.default_layers = []
 
     def __repr__(self):
-        return f'<{self.__name__} {self.api_type.upper()} - {self.api_name}>'
+        return f'<{self.__class__.__name__} {self.api_type.upper()} - {self.api_name}>'
 
 
 class TomcruRouteDescriptor:
@@ -74,4 +74,4 @@ class TomcruRouteDescriptor:
         self.endpoints.append(ep)
 
     def __repr__(self):
-        return f'<{self.__name__} {self.route} ({self.group})>'
+        return f'<{self.__class__.__name__} {self.route} ({self.group})>'

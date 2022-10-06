@@ -24,9 +24,10 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
         :return: if authorized
         """
+        print(1)
         auth_event = {
             'queryStringParameters': event.get('queryStringParameters', {}).copy(),
-            "methodArn": event['methodArn'],
+            "methodArn": event.get('methodArn', None),
             'requestContext': event['requestContext'].copy(),
             'headers': event.get('headers', {}).copy()
         }
