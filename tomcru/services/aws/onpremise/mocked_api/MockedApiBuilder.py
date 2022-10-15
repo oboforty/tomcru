@@ -3,6 +3,7 @@ import json
 
 from tomcru import TomcruApiDescriptor, TomcruProject
 
+from eme.mockapi import MockApi
 from flask import Flask, request, jsonify
 
 
@@ -26,33 +27,36 @@ class MockedApiBuilder:
         with open(os.path.join(self.mock_cfg['__fileloc__'], authorizer_mock+'_apimock.json')) as fh:
             self.resp = json.load(fh)
 
-        app = self.mock_server_builder(api.api_name)
+        app = MockApi(self.resp, __name__)
 
+        # setup conf for app runner
+        app.api_name = api_name
+        app.is_main_thread = False
         app.host = api_cfg.get('host', 'localhost')
         app.port = api_cfg.get('port', 5000)
 
         return app
 
     def mock_server_builder(self, api_name):
-        app = Flask(__name__)
-
-        app.api_name = api_name
-        app.is_main_thread = False
-
-        @app.route('/oauth/me')
-        def authorizer_resp():
-            if 'authorization' not in request.headers:
-                return jsonify({}), 403
-
-            tk = request.headers['authorization']
-
-            if 'Bearer' in tk:
-                tk = tk.split(' ')[1]
-
-            for k in list(self.resp.keys()):
-                if isinstance(self.resp[k], str):
-                    self.resp[k] = self.resp[k].replace('{echo_token}', tk)
-
-            return jsonify(self.resp)
+        #
+        # app = Flask()
+        # app.api_name = api_name
+        # app.is_main_thread = False
+        #
+        # @app.route('/oauth/me')
+        # def authorizer_resp():
+        #     if 'authorization' not in request.headers:
+        #         return jsonify({}), 403
+        #
+        #     tk = request.headers['authorization']
+        #
+        #     if 'Bearer' in tk:
+        #         tk = tk.split(' ')[1]
+        #
+        #     for k in list(self.resp.keys()):
+        #         if isinstance(self.resp[k], str):
+        #             self.resp[k] = self.resp[k].replace('{echo_token}', tk)
+        #
+        #     return jsonify(self.resp)
 
         return app
