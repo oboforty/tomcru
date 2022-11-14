@@ -221,11 +221,3 @@ class DdbTableAdapter:
             _key[self.sort_key] = Item[self.sort_key]
 
         return _key
-
-
-class DdbSqlAlchemyAdapter:
-    def __init__(self, sess, tables):
-        self.tables = {k: DdbTableAdapter(sess, t) for k,t in tables.items()}
-
-    def Table(self, table_name) -> DdbTableAdapter:
-        return self.tables.get(table_name)

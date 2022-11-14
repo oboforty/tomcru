@@ -16,12 +16,11 @@ class TomcruCfg:
 
         self.envs: Dict[str, Dict[str, dict]] = defaultdict(dict)
 
-        self.tasks = {}
         self.apis: Dict[str, TomcruApiDescriptor] = {}
         self.authorizers: Dict[str, TomcruApiAuthorizerDescriptor] = {}
 
-        self.lambdas = {}
         self.layers = []
+        self.extra_srv = []
 
 
 class TomcruApiDescriptor:

@@ -1,7 +1,7 @@
 import os
-from typing import Tuple
 
-from .services.boto3 import Boto3
+from tomcru.core import utils
+from .boto3 import Boto3
 from tomcru import TomcruProject
 
 
@@ -11,17 +11,28 @@ class Boto3Builder:
         self.p = project
         self.cfg = project.cfg
         self.boto3_cfg = opts
+        self.objs = project.serv('aws:onpremise:obj_store')
 
-    def build_boto3(self, apigw_app_wrapper) -> Tuple[Boto3, str]:
+        self.boto3_obj: Boto3 | None = None
+
+    def init(self):
         """
         Builds onpremsie boto3 wrapper
 
         :param apigw_app_wrapper: local api implementation `
         :return:
         """
+        self.boto3_obj = Boto3(self.objs)
 
-        # @todo: later: apiGW service depends on individual API, but we should map api to ID (use global FaaSAppBuilder instead of ApiBuilder)
-        b = Boto3(apigw_app_wrapper, self.cfg.app_path, self.boto3_cfg)
+        return self.boto3_obj
+
+    def inject(self):
+        """
+        Injects mocked boto3 object as importable python package
+        """
         _path = os.path.dirname(os.path.realpath(__file__))
 
-        return b, os.path.join(_path, 'services')
+        utils.inject('boto3', _path, self.boto3_obj)
+
+    def deject(self):
+        utils.clean_inject('boto3')

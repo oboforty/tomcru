@@ -14,11 +14,11 @@ class LambdaBuilder:
     def __init__(self, project: TomcruProject, opts: dict):
         self.cfg = project.cfg
         self.opts = opts
-        self.lambdas = {}
         self.layers = {}
+        self.objs = project.serv('aws:onpremise:obj_store')
 
     def build_lambda(self, lambda_id, env: str):
-        if lambda_id in self.lambdas:
+        if self.objs.has('lambda', lambda_id):
             # lambda is already built
             # todo: later: rebuild if env changes?
             return
@@ -42,11 +42,12 @@ class LambdaBuilder:
         sys.modules.update(_ctx_orig)
 
         fn = module.handler
-        self.lambdas[lambda_id] = fn
+
+        self.objs.add('lambda', lambda_id, fn)
         return fn
 
     def run_lambda(self, lamb_id, evt, env, **kwargs):
-        lamb_fn = self.lambdas[lamb_id]
+        lamb_fn = self.objs.get('lambda', lamb_id)
 
         # prepare params
         sig = inspect.signature(lamb_fn)

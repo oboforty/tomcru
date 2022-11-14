@@ -29,8 +29,10 @@ class ApiBuilder(ApiGwBuilderCore):
         # todo: @LATER: decide between implementation detail, e.g. fastapi | flask | eme-flask
         #app_type = apiopts['app_type']
         app = self.create_app(api.api_name, apiopts)
+        self.p.serv('aws:onpremise:obj_store').add('boto3', 'apigatewaymanagementapi', app)
+        self.p.serv('aws:onpremise:boto3_b').inject()
 
-        self._inject_dependencies()
+        self._inject_layers()
 
         self._build_authorizers()
         _controllers, _index = self._build_controllers(api)

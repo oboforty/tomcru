@@ -37,15 +37,10 @@ class ApiGwBuilderCore:
                 # todo: implement IAM and jwt
                 raise NotImplementedError(authorizer_id)
 
-    def _inject_dependencies(self):
+    def _inject_layers(self):
         """
-        Injects boto3 and lambda layers for all lambda integrations
+        Injects lambda layers for all lambda integrations
         """
-
-        #self.boto3_injector.inject_boto3()
-        # inject boto3
-        boto3, boto3_path = self.boto3_builder.build_boto3(self.app)
-        utils.inject('boto3', boto3_path, boto3)
 
         # inject layers
         if self.cfg.layers:

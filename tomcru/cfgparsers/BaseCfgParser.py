@@ -21,6 +21,9 @@ class BaseCfgParser:
         if not cfgp.cfg: cfgp.cfg = self.cfg
         self.subparsers[cfgpid] = cfgp
 
+    def build_service(self, srv, **kwargs):
+        self.cfg.extra_srv.append((srv, kwargs))
+
     def parse_project_apis(self):
         """
         Parses api configuration in
@@ -70,7 +73,7 @@ class BaseCfgParser:
         authorizers = r.pop('authorizers', {})
         # list authorizers
         for auth_id, integ_opt in authorizers.items():
-            auth_integ = self.get_auth_integ(auth_id, integ_opt)
+            auth_integ = self._get_auth_integ(auth_id, integ_opt)
 
             self.cfg.authorizers[auth_id] = auth_integ
 
@@ -118,7 +121,7 @@ class BaseCfgParser:
 
                 method, route = endpoint.split(' ')
 
-                endpoint_integ = self.get_integ(api_name, integ_opts, check_files, route, method)
+                endpoint_integ = self._get_integ(api_name, integ_opts, check_files, route, method)
 
                 # add Api Gateway integration
                 cfg_api_.routes.setdefault(route, TomcruRouteDescriptor(endpoint_integ.route, endpoint_integ.group, api_name))
@@ -130,7 +133,7 @@ class BaseCfgParser:
     def add_layer(self, layer_name, files=None, packages=None, folder=None, single_file=False, in_house=True):
         self.cfg.layers.append((layer_name, files, packages, folder, single_file, in_house))
 
-    def get_integ(self, api_name, integ_opts, check_files: bool, route, method) -> TomcruEndpointDescriptor:
+    def _get_integ(self, api_name, integ_opts, check_files: bool, route, method) -> TomcruEndpointDescriptor:
         """
 
         :param integ_opts:
@@ -176,7 +179,7 @@ class BaseCfgParser:
 
         return integ
 
-    def get_auth_integ(self, auth_id, integ_opt) -> TomcruApiAuthorizerDescriptor:
+    def _get_auth_integ(self, auth_id, integ_opt) -> TomcruApiAuthorizerDescriptor:
         if not integ_opt:
             return None
         auth_type, integ_opt = integ_opt.split(':')
@@ -217,8 +220,3 @@ class BaseCfgParser:
         self.cfg.envs[env].update(
             dict(load_settings(file_path).conf)
         )
-
-    def find_lambda_layers(self):
-        raise NotImplementedError("please manually add layers with add_layer")
-        #path = f'{self.cfg.app_path}/layers'
-        #for layer in os.listdir(path):
