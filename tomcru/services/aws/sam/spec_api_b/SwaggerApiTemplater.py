@@ -1,5 +1,9 @@
-from tomcru import TomcruProject, TomcruApiDescriptor, TomcruEndpointDescriptor, TomcruLambdaIntegrationDescription, TomcruApiLambdaAuthorizerDescriptor
+from tomcru import TomcruProject, TomcruApiDescriptor, TomcruEndpointDescriptor, TomcruLambdaIntegrationDescription, TomcruApiLambdaAuthorizerDescriptor, TomcruApiOIDCAuthorizerDescriptor
 from tomcru.yaml_custom import Ref, GetAtt, Join
+
+from .integrations.SAMLambdaBuilder import SAMLambdaBuilder
+from .authorizers.SAMLambdaAuthBuilder import SAMLambdaAuthBuilder
+from .authorizers.SAMOIDCAuthBuilder import SAMOIDCAuthBuilder
 
 
 class SwaggerApiTemplater:
@@ -9,6 +13,15 @@ class SwaggerApiTemplater:
         self.opts = opts
         self.lambda_builder = project.serv('aws:sam:lambda_b')
         self.param_builder = project.serv('aws:sam:params_b')
+
+        self.integrations_b: dict[type, object] = {
+            TomcruLambdaIntegrationDescription: SAMLambdaBuilder(self.param_builder, self.lambda_builder)
+        }
+
+        self.authorizers_b: dict[type, object] = {
+            TomcruApiLambdaAuthorizerDescriptor: SAMLambdaAuthBuilder(self.param_builder, self.lambda_builder, self.opts['external_authorizers']),
+            TomcruApiOIDCAuthorizerDescriptor: SAMOIDCAuthBuilder(self.param_builder)
+        }
 
     def build_api(self, api: TomcruApiDescriptor, env: str):
         # todo: stage var
@@ -30,93 +43,27 @@ class SwaggerApiTemplater:
         }
 
     def _build_authorizers(self, spec, api: TomcruApiDescriptor):
+        components = spec.get('components', {})
 
-        if 'securitySchemes' in spec.get('components', {}):
-
-            for auth_id, auth_spec in spec['components']['securitySchemes'].items():
+        if 'securitySchemes' in components:
+            for auth_id, auth_spec in components['securitySchemes'].items():
                 auth = self.cfg.authorizers[auth_id]
 
                 apiopts = self.opts.get('__default__', {})
                 apiopts.update(self.opts.get(api.api_name, {}))
 
-                role_id = self.param_builder.store('LambdaAccessRole', apiopts['access_role'])
-
-                if isinstance(auth, TomcruApiLambdaAuthorizerDescriptor):
-                    auth_integ = {
-                        'type': 'request',
-                        'identitySource': "$request.header.Authorization",
-                        'authorizerResultTtlInSeconds': 3600,
-                        'authorizerPayloadFormatVersion': 2.0,
-                        'enableSimpleResponses': True,
-                        'authorizerCredentials': Ref(role_id),
-                    }
-
-                    if 'external' == auth.lambda_source:
-                        arn = self.opts['external_authorizers'][auth.auth_id]
-                        auth_arn_param_id = self.param_builder.store(auth.auth_id+'Arn', arn)
-
-                        #auth_integ['authorizerCredentials'] = Join(f'["", ["arn:aws:apigateway:", Ref: "AWS::Region",":lambda:path/2015-03-31/functions/", Ref: "{auth_arn_param_id}", "/invocations"]]')
-                        #auth_integ['authorizerCredentials'] = Join("tess")
-
-                        auth_integ['authorizerCredentials'] = Join(["", [
-                            "arn:aws:apigateway:",
-                            Ref("AWS::Region"),
-                            ":lambda:path/2015-03-31/functions/",
-                            Ref(auth_arn_param_id),
-                            "/invocations"
-                        ]])
-                    else:
-                        self.lambda_builder.add_lambda(auth.lambda_id)
-
-                        auth_integ['authorizerCredentials'] = auth.lambda_id.replace('/', '_')+'.Arn'
-                else:
-                    raise NotImplementedError(str(type(auth)))
-
-                auth_spec['x-amazon-apigateway-authorizer'] = auth_integ
+                auth_builder = self.authorizers_b[type(auth)]
+                auth_spec['x-amazon-apigateway-authorizer'] = auth_builder.build(auth_id, auth, apiopts)
 
     def _build_endpoints(self, spec, api: TomcruApiDescriptor):
         for route, ops in spec['paths'].items():
 
             for method, op in ops.items():
-                integ = None
+                integ_cfg: TomcruEndpointDescriptor = op.pop('x-integ')
+                #route_cfg = api.routes[route]
 
-                if 'x-lambda' in op:
-                    lambda_id, integ = self._integrate_lambda(op.pop('x-lambda'), api, route, method)
+                integ_builder = self.integrations_b[type(integ_cfg)]
+                op['x-amazon-apigateway-integration'] = integ_builder.build(integ_cfg)
 
-                    self.lambda_builder.add_lambda(lambda_id)
-                else:
-                    print('???', op)
-
-                    # todo: aws-mock integration if nothing is here?
-
-                if integ:
-                    op['x-amazon-apigateway-integration'] = integ
-                else:
-                    raise Exception(f"No integration found for {method} {route}")
-
-    def _integrate_lambda(self, lambda_id, api, route, method):
-        if not isinstance(lambda_id, str):
-            lambda_id = lambda_id['lambda-id']
-
-        group, lamb = lambda_id.split('/')
-        ep_id = TomcruEndpointDescriptor.get_endpoint_id(group, method, lamb)
-
-        route_cfg = api.routes[route]
-        integ_cfg: TomcruLambdaIntegrationDescription = next(filter(lambda x: x.endpoint_id == ep_id, route_cfg.endpoints))
-
-        integ = {
-            'type': "aws_proxy",
-            'httpMethod': "POST",
-            'uri': GetAtt(f"{group}_{lamb}.Arn"),
-            # todo: configure timeout?
-            'timeoutInMillis': 3000,
-            'payloadFormatVersion': "2.0"
-        }
-
-        if integ_cfg.role:
-            role_id = self.param_builder.store('LambdaAccessRole', integ_cfg.role)
-
-            integ['credentials'] = Ref(role_id)
-
-        # lambda integration
-        return lambda_id, integ
+                if integ_cfg.auth:
+                    op['security'] = [{integ_cfg.auth: []}]

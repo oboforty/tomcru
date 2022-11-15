@@ -1,13 +1,13 @@
 import os.path
 from typing import Dict
 
-from tomcru import TomcruCfg, TomcruProject, TomcruEndpointDescriptor, TomcruApiLambdaAuthorizerDescriptor
+from tomcru import TomcruCfg, TomcruProject, TomcruEndpointDescriptor, TomcruApiLambdaAuthorizerDescriptor, TomcruApiOIDCAuthorizerDescriptor
 from tomcru.core import utils
 
 from .integration.LambdaAuthorizerIntegration import LambdaAuthorizerIntegration
 from .integration.ExternalLambdaAuthorizerIntegration import ExternalLambdaAuthorizerIntegration
 from .integration.TomcruApiGWHttpIntegration import TomcruApiGWHttpIntegration, TomcruApiGWAuthorizerIntegration
-
+from .integration.OIDCAuthorizerIntegration import OIDCAuthorizerIntegration
 
 class ApiGwBuilderCore:
 
@@ -33,6 +33,8 @@ class ApiGwBuilderCore:
                 else:
                     self.authorizers[authorizer_id] = LambdaAuthorizerIntegration(auth, self.apigw_cfg, self.p.serv('aws:onpremise:lambda_b'), env=self.env)
 
+            elif isinstance(auth, TomcruApiOIDCAuthorizerDescriptor):
+                self.authorizers[authorizer_id] = OIDCAuthorizerIntegration(auth, self.apigw_cfg, env=self.env)
             else:
                 # todo: implement IAM and jwt
                 raise NotImplementedError(authorizer_id)
@@ -48,5 +50,5 @@ class ApiGwBuilderCore:
             _layers_keywords = set(map(lambda f: f[1][0], self.cfg.layers))
             utils.inject(_layers_keywords, _layers_paths)
 
-    def _clean_dependencies(self):
+    def _clean_layers(self):
         utils.cleanup_injects()

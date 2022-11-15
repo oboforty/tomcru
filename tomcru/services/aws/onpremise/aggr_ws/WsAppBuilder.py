@@ -29,7 +29,7 @@ class WsAppBuilder(ApiGwBuilderCore):
         self._build_authorizers()
         self._build_groups(api)
 
-        self._clean_dependencies()
+        self._clean_layers()
 
         return self.app
 

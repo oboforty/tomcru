@@ -27,7 +27,7 @@ class LambdaIntegration(TomcruApiGWWsIntegration):
 
         # Api GW only authenticates at $connect, and its guaranteed to be cached afterwards
         if '$connect' == evt['requestContext']['routeKey']:
-            _auth_ok = self.auth_integ.authorize(evt, source='params')
+            _auth_ok = self.auth_integ.authorize(evt)
         else:
             _auth_ok = self.auth_integ.check_cached_auth(evt)
 

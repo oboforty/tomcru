@@ -3,9 +3,8 @@ import os
 from apispec import APISpec
 from prance import ResolvingParser, BaseParser
 
-
 from tomcru import TomcruCfg, TomcruRouteDescriptor, TomcruEndpointDescriptor, TomcruApiDescriptor, \
-    TomcruApiLambdaAuthorizerDescriptor, TomcruLambdaIntegrationDescription, TomcruApiAuthorizerDescriptor
+    TomcruApiLambdaAuthorizerDescriptor, TomcruLambdaIntegrationDescription, TomcruApiAuthorizerDescriptor, TomcruApiOIDCAuthorizerDescriptor
 
 
 class SwaggerCfgParser:
@@ -42,23 +41,85 @@ class SwaggerCfgParser:
 
         # if not cfg_api_.enabled:
         #     return
+        components = f.specification.get('components', {})
 
+        # parse authorizers
+        if 'securitySchemes' in components:
+            for auth_id, auth_spec in components['securitySchemes'].items():
+                auth = self._get_authorizer(auth_id, auth_spec)
+                self.cfg.authorizers[auth_id] = auth
+
+        default_auth = next(iter(self.cfg.authorizers)) if len(self.cfg.authorizers)==1 else None
+
+        # parse endpoints
         for route, path in f.specification['paths'].items():
             #group = route.replace('/', '_').strip('_')
 
             for method, operation in path.items():
                 method = method.upper()
+                auth = operation.pop('x-auth', default_auth)
+                integ: TomcruEndpointDescriptor
 
-                # parse lambda integration
-                lamb, role, layers, auth = operation['x-lambda'], None, [], None
-                if isinstance(lamb, dict):
-                    lamb, role, layers, auth = lamb['lambda-id'], lamb.get('role'), lamb.get('layers'), lamb.get('auth')
-                elif not isinstance(lamb, str):
-                    raise Exception("Lambda integration as array not supported")
+                if 'x-lambda' in operation:
+                    # parse lambda integration
+                    group, lamb, role, layers = self._get_lambda(operation.pop('x-lambda'))
 
-                group, lamb = lamb.split('/')
-
-                integ = TomcruLambdaIntegrationDescription(group, route, method, lamb, layers, role, auth)
+                    integ = TomcruLambdaIntegrationDescription(group, route, method, lamb, layers, role, auth)
+                else:
+                    # parse empty (mock) integration
+                    # try parsing rest of swagger and deduct a mockable response instead?
+                    raise NotImplementedError("")
 
                 cfg_api_.routes.setdefault(route, TomcruRouteDescriptor(route, group, api_name))
                 cfg_api_.routes[route].add_endpoint(integ)
+
+                # we must leave a temporal reference in the swagger spec as well so that SAM can build it
+                operation['x-integ'] = integ
+
+    def _get_authorizer(self, auth_id, spec: dict):
+
+        if spec['type'] == 'apiKey':
+            # todo: is it possible to define non-lambda for this auth type?
+            group, lambda_id, role, layers = self._get_lambda(spec.pop('x-lambda'))
+            _in = spec.get('in', 'header')
+            _name = spec.get('name', 'Authorization')
+
+            return TomcruApiLambdaAuthorizerDescriptor(auth_id, lambda_id, group, _in, _name)
+        elif spec['type'] == 'openIdConnect':
+            # openapi3 doesn't allow in/name for openIdConnect, so authorization header is set static
+
+            # oidc endpoint is going to be redundant because SAM also requires it
+            endpoint = spec['openIdConnectUrl']
+            audience = spec.pop('x-oidc-audience', None)
+
+            return TomcruApiOIDCAuthorizerDescriptor(auth_id, endpoint, audience)
+        elif spec['type'] == 'oauth2':
+            raise NotImplementedError("we don't know how to implement this LOL")
+        else:
+            raise NotImplementedError("")
+
+    def _get_lambda(self, lamb):
+        role, layers = None, []
+
+        if isinstance(lamb, dict):
+            lamb, role, layers = lamb['lambda-id'], lamb.get('role'), lamb.get('layers')
+        elif not isinstance(lamb, str):
+            raise Exception("Lambda integration as array not supported")
+
+        # fetch endpoint
+        group, integ_id = lamb.split('/')
+        return group, integ_id, role, layers
+
+# todo: create not read tomcru cfg!
+# self.cfg.authorizers[auth_id] = auth
+#
+# if isinstance(auth, TomcruApiLambdaAuthorizerDescriptor):
+#     if 'external' == auth.lambda_source:
+#         pass
+#     else:
+#         pass
+# elif isinstance(auth, TomcruApiJWTAuthorizerDescriptor):
+#     pass
+# else:
+#     raise NotImplementedError(str(type(auth)))
+

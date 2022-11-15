@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 
-from tomcru import TomcruApiLambdaAuthorizerDescriptor
+from tomcru import TomcruApiAuthorizerDescriptor
 
 
 class TomcruApiGWHttpIntegration(metaclass=ABCMeta):
@@ -12,7 +12,7 @@ class TomcruApiGWHttpIntegration(metaclass=ABCMeta):
 
 class TomcruApiGWAuthorizerIntegration(metaclass=ABCMeta):
 
-    def __init__(self, cfg: TomcruApiLambdaAuthorizerDescriptor):
+    def __init__(self, cfg: TomcruApiAuthorizerDescriptor):
         self.cfg = cfg
         self.authorizers_cache = {}
 

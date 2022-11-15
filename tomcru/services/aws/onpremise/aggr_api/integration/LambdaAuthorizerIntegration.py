@@ -13,9 +13,20 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         self.lambda_id = cfg.lambda_id
         self.env = env
 
+        self.source = cfg.src_in
+        self.source_name = cfg.src_name
+
+        if self.source == 'query':
+            self.source = 'queryStringParameters'
+        else:
+            self.source += 's'
+
+        if self.source == 'cookies':
+            raise NotImplementedError("Cookies are not yet supported in tomcru authorization (in local FaaS)")
+
         self.lambda_builder.build_lambda(self.lambda_id, env=self.env)
 
-    def authorize(self, event: dict, source='headers'):
+    def authorize(self, event: dict):
         """
         Runs lambda
 
@@ -24,18 +35,15 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
         :return: if authorized
         """
-        print(1)
+
         auth_event = {
-            'queryStringParameters': event.get('queryStringParameters', {}).copy(),
             "methodArn": event.get('methodArn', None),
             'requestContext': event['requestContext'].copy(),
-            'headers': event.get('headers', {}).copy()
-        }
 
-        if 'headers' == source:
-            auth_event['identitySource'] = auth_event['headers'].get('authorization')
-        elif 'params' == source:
-            auth_event['identitySource'] = auth_event['queryStringParameters'].get('authorization')
+            'queryStringParameters': event.get('queryStringParameters', {}).copy(),
+            'headers': event.get('headers', {}).copy(),
+        }
+        auth_event['identitySource'] = auth_event[self.source].get(self.source_name)
 
         # check if cached
         cache_key = auth_event['identitySource']

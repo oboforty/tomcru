@@ -65,6 +65,7 @@ paths:
       summary: Info for a specific pet
       operationId: showPetById
       x-lambda: pets/ViewPet
+      x-auth: OpenIdAuth
       tags:
         - pets
       parameters:
@@ -88,6 +89,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 components:
+  securitySchemes:
+    DoorsAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      x-lambda: authorizers/DoorsCachedAuthorizer
+    DoorsAuth2:
+      type: openIdConnect
+      openIdConnectUrl: https://example.com/.well-known/openid-configuration
+      x-oidc-audience:
+        - MyApi
   schemas:
     Pet:
       type: object

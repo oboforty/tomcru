@@ -10,7 +10,10 @@ Globals:
     Runtime: python3.9
     Timeout: 120
 Parameters:
-  LambdaAccessRole:
+  LambdaAccessRole0:
+    Default: arn:aws:iam::636500095665:role/APIGatewayAccessLambda
+    Type: String
+  LambdaAccessRole1:
     Default: asd
     Type: String
   LambdaExecRole:
@@ -24,22 +27,10 @@ Resources:
       ContentUri: ./layers/TestLayer.zip
       LayerName: TestLayer
     Type: AWS::Serverless::LayerVersion
-  pets_CreatePet:
+  authorizers_DoorsCachedAuthorizer:
     Properties:
-      CodeUri: ./lambdas/pets/CreatePet
-      FunctionName: pets_CreatePet
-      Role: LambdaExecRole0
-    Type: AWS::Serverless::Function
-  pets_GetList:
-    Properties:
-      CodeUri: ./lambdas/pets/GetList
-      FunctionName: pets_GetList
-      Role: LambdaExecRole0
-    Type: AWS::Serverless::Function
-  pets_ViewPet:
-    Properties:
-      CodeUri: ./lambdas/pets/ViewPet
-      FunctionName: pets_ViewPet
+      CodeUri: ./lambdas/authorizers/DoorsCachedAuthorizer
+      FunctionName: authorizers_DoorsCachedAuthorizer
       Role: LambdaExecRole0
     Type: AWS::Serverless::Function
   petstore:
@@ -78,6 +69,28 @@ Resources:
                 - ''
                 - '#/components/schemas/Pets'
               type: array
+          securitySchemes:
+            DoorsAuth:
+              in: header
+              name: Authorization
+              type: apiKey
+              x-amazon-apigateway-authorizer:
+                authorizerCredentials: authorizers_DoorsCachedAuthorizer.Arn
+                authorizerPayloadFormatVersion: 2.0
+                authorizerResultTtlInSeconds: 3600
+                enableSimpleResponses: true
+                identitySource: $request.header.Authorization
+                type: request
+            DoorsAuth2:
+              openIdConnectUrl: https://example.com/.well-known/openid-configuration
+              type: openIdConnect
+              x-amazon-apigateway-authorizer:
+                identitySource: $request.header.Authorization
+                jwtConfiguration:
+                  audience:
+                  - MyApi
+                openIdConnectUrl: https://example.com/.well-known/openid-configuration
+                type: jwt
         info:
           license:
             name: MIT
@@ -122,12 +135,12 @@ Resources:
               tags:
               - pets
               x-amazon-apigateway-integration:
-                credentials: !Ref LambdaAccessRole0
+                credentials: !Ref LambdaAccessRole1
                 httpMethod: POST
                 payloadFormatVersion: '2.0'
                 timeoutInMillis: 3000
                 type: aws_proxy
-                uri: !GetAtt pets_GetList.Arn
+                uri: !GetAtt pets_pets/GetList.Arn
             post:
               operationId: createPets
               responses:
@@ -149,7 +162,7 @@ Resources:
                 payloadFormatVersion: '2.0'
                 timeoutInMillis: 3000
                 type: aws_proxy
-                uri: !GetAtt pets_CreatePet.Arn
+                uri: !GetAtt pets_pets/CreatePet.Arn
           /pets/{petId}:
             get:
               operationId: showPetById
@@ -177,6 +190,8 @@ Resources:
                         x-scope:
                         - ''
                   description: unexpected error
+              security:
+              - OpenIdAuth: []
               summary: Info for a specific pet
               tags:
               - pets
@@ -185,7 +200,7 @@ Resources:
                 payloadFormatVersion: '2.0'
                 timeoutInMillis: 3000
                 type: aws_proxy
-                uri: !GetAtt pets_ViewPet.Arn
+                uri: !GetAtt pets_pets/ViewPet.Arn
         servers:
         - url: http://petstore.swagger.io/v1
       StageName: v1

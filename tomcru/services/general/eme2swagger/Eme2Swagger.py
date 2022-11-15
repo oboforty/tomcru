@@ -29,18 +29,11 @@ class Eme2Swagger:
         for authorizer_id in api_authorizers:
             auth = self.cfg.authorizers[authorizer_id]
 
-            if isinstance(auth, TomcruApiLambdaAuthorizerDescriptor):
-                # no need to define it further than this at this level
-                auth_integ = {
-                    'type': 'apiKey',
-                    'name': auth.auth_id,
-                    'in': "header"
-                }
-            else:
-                # todo: support more authorizers
-                raise NotImplementedError()
-
-            authorizers[auth.auth_id] = auth_integ
+            authorizers[auth.auth_id] = {
+                'type': auth.auth_type,
+                'name': auth.auth_id,
+                'in': auth.src_in
+            }
 
         return {
             'openapi': "3.0.0",
@@ -68,7 +61,8 @@ class Eme2Swagger:
                 'x-lambda': {
                     'lambda-id': endpoint.lambda_id,
                     'role': endpoint.role,
-                    'layers': endpoint.layers
+                    'layers': endpoint.layers,
+                    'auth': endpoint.auth
                 }
             }
         else:

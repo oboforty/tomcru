@@ -39,7 +39,7 @@ class ApiBuilder(ApiGwBuilderCore):
 
         self.load_eme_handlers(_controllers, _index)
 
-        self._clean_dependencies()
+        self._clean_layers()
 
         return app
 
