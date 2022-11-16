@@ -19,6 +19,7 @@ class EmeWebApi(Flask, WebsiteAppBase):
         self.host = cfg.get('host')
         self.port = int(cfg.get('port', 5000))
         self.api_name = f'{tomcrucfg.api_name}:{self.port}'
+        self.api_type = 'http'
         self.is_main_thread = cfg.get('main_api', False)
 
         self.boto3 = None

@@ -19,6 +19,12 @@ from .apps.EmeWebApi import EmeWebApi
 
 class ApiBuilder(ApiGwBuilderCore):
 
+    def init(self):
+        """
+        Registers a common object for WS & HTTP api gatweways
+        """
+        pass
+
     def build_api(self, api: TomcruApiDescriptor, env: str):
         self.env = env
 
@@ -29,18 +35,12 @@ class ApiBuilder(ApiGwBuilderCore):
         # todo: @LATER: decide between implementation detail, e.g. fastapi | flask | eme-flask
         #app_type = apiopts['app_type']
         app = self.create_app(api.api_name, apiopts)
-        self.p.serv('aws:onpremise:obj_store').add('boto3', 'apigatewaymanagementapi', app)
-        self.p.serv('aws:onpremise:boto3_b').inject()
+        self.mgr.add_app(app)
 
-        self._inject_layers()
-
-        # todo: ITT: layers & boto kivesz api_b ből
         self._build_authorizers()
         _controllers, _index = self._build_controllers(api)
 
         self.load_eme_handlers(_controllers, _index)
-
-        self._clean_layers()
 
         return app
 
@@ -102,7 +102,6 @@ class ApiBuilder(ApiGwBuilderCore):
         """
         # get called endpoint
         ep, api = self.get_called_endpoint(**kwargs)
-        print(repr(api), '     ', repr(ep))
         integ = self.integrations[ep]
 
         response = integ.on_request(**kwargs)

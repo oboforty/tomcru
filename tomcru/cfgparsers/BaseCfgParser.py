@@ -22,7 +22,7 @@ class BaseCfgParser:
         self.subparsers[cfgpid] = cfgp
 
     def build_service(self, srv, **kwargs):
-        self.cfg.extra_srv.append((srv, kwargs))
+        self.cfg.services.append((srv, kwargs))
 
     def parse_project_apis(self):
         """
@@ -177,7 +177,6 @@ class BaseCfgParser:
         elif 'swagger' in params:
             integ = TomcruSwaggerIntegration('swagger', route, method, auth, params['swagger'])
         else:
-            print(params)
             raise Exception(f"Integration not recognized!")
 
         return integ

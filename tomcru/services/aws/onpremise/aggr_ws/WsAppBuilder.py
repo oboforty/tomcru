@@ -15,6 +15,9 @@ class WsAppBuilder(ApiGwBuilderCore):
 
         #self.api_serv = self.p.serv('aws:onpremise:aggr_api')
 
+    def init(self):
+        pass
+
     def build_api(self, api_name, api: TomcruApiDescriptor, env: str):
         self.env = env
 
@@ -23,13 +26,10 @@ class WsAppBuilder(ApiGwBuilderCore):
         apiopts.update(self.apigw_cfg.get(api_name, {}))
 
         self.app = EmeWsApp(self.cfg.apis[api_name], apiopts)
-
-        self._inject_dependencies()
+        self.mgr.add_app(self.app)
 
         self._build_authorizers()
         self._build_groups(api)
-
-        self._clean_layers()
 
         return self.app
 

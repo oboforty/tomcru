@@ -17,6 +17,20 @@ class LambdaBuilder:
         self.layers = {}
         self.objs = project.serv('aws:onpremise:obj_store')
 
+    def init(self):
+        pass
+
+    def inject_dependencies(self):
+        """
+        Injects lambda layers for all lambda integrations
+        """
+
+        if self.cfg.layers:
+            # find layers path on disk
+            _layers_paths = list(map(lambda f: os.path.join(self.cfg.app_path, 'layers', f[3]), self.cfg.layers))
+            _layers_keywords = set(map(lambda f: f[1][0], self.cfg.layers))
+            utils.inject(_layers_keywords, _layers_paths)
+
     def build_lambda(self, lambda_id, env: str):
         if self.objs.has('lambda', lambda_id):
             # lambda is already built
@@ -31,6 +45,9 @@ class LambdaBuilder:
 
         # ensure that only local packages are loaded; and packages with the same name from other  lambdas aren't
         _ctx_orig = dict(sys.modules)
+
+        if not os.path.exists(_lambd_path) or not os.path.exists(os.path.join(_lambd_path, 'app.py')):
+            raise IOError("Lambda path does not exists: " + _lambd_path+'/app.py')
 
         # load lambda function
         sys.path.append(_lambd_path)

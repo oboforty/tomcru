@@ -26,7 +26,7 @@ class Boto3Builder:
 
         return self.boto3_obj
 
-    def inject(self):
+    def inject_dependencies(self):
         """
         Injects mocked boto3 object as importable python package
         """
@@ -34,5 +34,5 @@ class Boto3Builder:
 
         utils.inject('boto3', _path, self.boto3_obj)
 
-    def deject(self):
+    def deject_dependencies(self):
         utils.clean_inject('boto3')

@@ -20,7 +20,7 @@ class TomcruCfg:
         self.authorizers: Dict[str, TomcruApiAuthorizerDescriptor] = {}
 
         self.layers = []
-        self.extra_srv = []
+        self.services = []
 
 
 class TomcruApiDescriptor:

@@ -39,16 +39,7 @@ class ApiGwBuilderCore:
                 # todo: implement IAM and jwt
                 raise NotImplementedError(authorizer_id)
 
-    def _inject_layers(self):
-        """
-        Injects lambda layers for all lambda integrations
-        """
-
-        # inject layers
-        if self.cfg.layers:
-            _layers_paths = list(map(lambda f: os.path.join(self.cfg.app_path, 'layers', f[3]), self.cfg.layers))
-            _layers_keywords = set(map(lambda f: f[1][0], self.cfg.layers))
-            utils.inject(_layers_keywords, _layers_paths)
-
-    def _clean_layers(self):
-        utils.cleanup_injects()
+    @property
+    def mgr(self):
+        objs = self.p.serv('aws:onpremise:obj_store')
+        return objs.get('boto3', 'apigatewaymanagementapi')

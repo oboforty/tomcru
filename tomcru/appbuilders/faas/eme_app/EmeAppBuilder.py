@@ -1,3 +1,4 @@
+from core import utils
 from tomcru import TomcruProject
 
 
@@ -23,13 +24,31 @@ class EmeAppBuilder:
         objs = self.p.serv('aws:onpremise:obj_store')
         return objs.get(srv, name)
 
-    def build_services(self):
-        for srv, kwargs in self.cfg.extra_srv:
-            self.p.serv(self.api2builder[srv]).init(**kwargs)
+    def init_services(self):
+        # ws and http eme builders register their app objects to a common obj_store item
+        self.cfg.services.append(('http', {}))
+        self.cfg.services.append(('ws', {}))
+        self.cfg.services.append(('aws:onpremise:lambda_b', {}))
+        self.cfg.services.append(('aws:onpremise:apigatewaymanagementapi', {}))
+
+        for srv, kwargs in self.cfg.services:
+            service = self.p.serv(self.api2builder.get(srv, srv))
+            service.init(**kwargs)
 
     def inject_dependencies(self):
-        for srv, kwargs in self.cfg.extra_srv:
-            self.p.serv(self.api2builder[srv]).inject_dependencies(**kwargs)
+        for srv, _ in self.cfg.services:
+            service = self.p.serv(self.api2builder.get(srv, srv))
+            if hasattr(service, 'inject_dependencies'):
+                service.inject_dependencies()
+
+    def deject_dependencies(self):
+        for srv, _ in self.cfg.services:
+            service = self.p.serv(self.api2builder.get(srv, srv))
+
+            if hasattr(service, 'deject_dependencies'):
+                service.deject_dependencies()
+
+        utils.cleanup_injects()
 
     def build_api(self, api_name, env):
         self.p.env = env
@@ -40,12 +59,15 @@ class EmeAppBuilder:
         return builder.build_api(api, env)
 
     def build_all(self, env):
-        self.build_services()
-        self.inject_dependencies()
+        self.init_services()
 
         apps = []
 
         for api_name, api in self.cfg.apis.items():
+            self.inject_dependencies()
+
             apps.append(self.build_api(api_name, env=env))
+
+            self.deject_dependencies()
 
         return apps

@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 import time
 from types import SimpleNamespace
 from typing import Dict
@@ -13,6 +12,7 @@ class EmeWsApp(WebsocketApp):
     def __init__(self, wsappcfg: TomcruApiDescriptor, cfg: dict):
         self.debug = True
         self.api_name = wsappcfg.api_name
+        self.api_type = 'ws'
         self.is_main_thread = False
 
         super().__init__({
@@ -25,21 +25,6 @@ class EmeWsApp(WebsocketApp):
         self._client_infos = {}
         self.boto3 = None
         self.port = cfg.get('port')
-
-    def post_to_connection(self, ConnectionId, Data: str):
-        # Data = json.loads(Data)
-
-        # @todo: detect app type
-        # if not isinstance(self.app, EmeSamWsApp):
-        #     raise Exception("Not provided WS app as proxy! " + str(type(self.app)))
-
-        if isinstance(ConnectionId, str):
-            ConnectionId = uuid.UUID(ConnectionId)
-
-        # todo: itT: find client wrapper by conn id
-        client = self._clients[ConnectionId]
-
-        asyncio.ensure_future(self.send(Data, client))
 
     def on_connect(self, client, path):
         self._clients[client.id] = client
