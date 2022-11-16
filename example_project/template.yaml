@@ -33,6 +33,20 @@ Resources:
       FunctionName: authorizers_DoorsCachedAuthorizer
       Role: LambdaExecRole0
     Type: AWS::Serverless::Function
+  mock_oidc:
+    Properties:
+      DefinitionBody:
+        components:
+          securitySchemes: {}
+        info:
+          license:
+            name: MIT
+          title: mock_oidc
+          version: 1.0.0
+        openapi: 3.0.0
+        paths: {}
+      StageName: v1
+    Type: AWS::Serverless::HttpApi
   petstore:
     Properties:
       DefinitionBody:
@@ -85,6 +99,8 @@ Resources:
               openIdConnectUrl: https://example.com/.well-known/openid-configuration
               type: openIdConnect
               x-amazon-apigateway-authorizer:
+                AuthorizationScopes:
+                - profile
                 identitySource: $request.header.Authorization
                 jwtConfiguration:
                   audience:

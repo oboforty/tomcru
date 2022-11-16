@@ -3,7 +3,7 @@ import os
 from eme.entities import load_settings
 
 from tomcru import TomcruCfg, TomcruRouteDescriptor, TomcruEndpointDescriptor, TomcruApiDescriptor, \
-    TomcruApiLambdaAuthorizerDescriptor, TomcruLambdaIntegrationDescription, TomcruApiAuthorizerDescriptor, TomcruSwaggerIntegration
+    TomcruApiLambdaAuthorizerDescriptor, TomcruLambdaIntegrationDescription, TomcruApiAuthorizerDescriptor, TomcruSwaggerIntegration, TomcruApiOIDCAuthorizerDescriptor
 
 
 class BaseCfgParser:
@@ -144,17 +144,19 @@ class BaseCfgParser:
         """
         if isinstance(integ_opts, str):
             integ_opts = [integ_opts]
-        integ_type, integ_id = integ_opts[0].split(':')
 
+        params = self._parse_linear_params(integ_opts)
         apicfg = self.cfg.apis[api_name]
-        auth = self._get_param(integ_opts, 'auth', apicfg.default_authorizer)
-        if not auth: auth = None
 
-        if 'lambda' == integ_type or 'l' == integ_type:
-            group, lamb_name = integ_id.split('/')
+        #integ_type, integ_id = integ_opts[0].split(':')
+        # auth = self._get_param(integ_opts, 'auth', apicfg.default_authorizer)
+        # if not auth: auth = None
+        auth = params.get('auth', apicfg.default_authorizer)
 
-            layers = self._get_param(integ_opts, 'layers', apicfg.default_layers)
-            role = self._get_param(integ_opts, 'role', apicfg.default_role)
+        if 'lambda' in params:
+            group, lamb_name = params['lambda'].split('/')
+            layers = params.get('layers', apicfg.default_layers)
+            role = params.get('role', apicfg.default_role)
 
             # post parse layers
             if isinstance(layers, str):
@@ -166,40 +168,64 @@ class BaseCfgParser:
             if check_files:
                 # check if files exist
                 if not os.path.exists(f'{self.cfg.app_path}/lambdas/{group}/{lamb_name}'):
-                    print("ERR: Lambda folder", group, integ_id, 'does not exist!')
+                    print("ERR: Lambda folder", group, lamb_name, 'does not exist!')
                     #continue
                     return None
 
             # Lambda integration
             integ = TomcruLambdaIntegrationDescription(group, route, method, lamb_name, layers, role, auth)
-        elif 'swagger' == integ_type:
-            integ = TomcruSwaggerIntegration('swagger', route, method, auth, integ_id)
+        elif 'swagger' in params:
+            integ = TomcruSwaggerIntegration('swagger', route, method, auth, params['swagger'])
         else:
-            raise Exception(f"Integration {integ_type} not recognized!")
+            print(params)
+            raise Exception(f"Integration not recognized!")
 
         return integ
 
     def _get_auth_integ(self, auth_id, integ_opt) -> TomcruApiAuthorizerDescriptor:
         if not integ_opt:
             return None
-        auth_type, integ_opt = integ_opt.split(':')
+        params = self._parse_linear_params(integ_opt)
 
-        if 'lambda' == auth_type or 'l' == auth_type:
-            lambda_source, lambda_id = integ_opt.split('/')
+        if 'lambda' in params:
+            lambda_source, lambda_id = params['lambda'].split('/')
 
             return TomcruApiLambdaAuthorizerDescriptor(auth_id, lambda_id, lambda_source)
+        elif 'oidc' in params:
+            audience = params.get('audience')
+            scopes = params.get('scopes')
+
+            return TomcruApiOIDCAuthorizerDescriptor(auth_id, params['oidc'], audience, scopes)
         else:
             pass
-        raise NotImplementedError(f"auth: {auth_type}")
+        raise NotImplementedError("auth")
 
-    def _get_param(self, integ_opts, param, default_val) -> str:
-        r = next(filter(lambda x: x.startswith(param+':'), integ_opts), ":").split(':')[1]
+    def _parse_linear_params(self, line: list):
+        if isinstance(line, str):
+            if ',' in line:
+                line = line.split(',')
+            else:
+                line = [line]
 
-        if not r:
-            # see if api config contains
-            r = default_val
+        params = {}
+        for lparam in line:
+            param = lparam.split(':')[0]
 
-        return r
+            value = lparam.removeprefix(param+':')
+            # array values:
+            if '|' in value:
+                value = value.split('|')
+            params[param] = value
+        return params
+
+    # def _get_param(self, integ_opts, param, default_val) -> str:
+    #     r = next(filter(lambda x: x.startswith(param+':'), integ_opts), "").removeprefix(param+':')
+    #
+    #     if not r:
+    #         # see if api config contains
+    #         r = default_val
+    #
+    #     return r
 
     def add_envvars(self, file_path, env, vendor):
         """

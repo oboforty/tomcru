@@ -1,5 +1,7 @@
 eme
 prance
 apispec
-botocore
 flask-swagger-ui
+pyjwt==2.6.0
+requests
+botocore

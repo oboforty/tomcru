@@ -1,7 +1,5 @@
 from tomcru import TomcruProject
 
-#from .flask_runner import start_flask_app
-
 
 class EmeAppBuilder:
     def __init__(self, project: TomcruProject, **kwargs):
@@ -19,11 +17,35 @@ class EmeAppBuilder:
             'boto3': 'aws:onpremise:boto3_b',
         }
 
-    def build_api(self, api_name, env):
-        self.p.env = env
+    def get_object(self, srv, name=None):
+        if name is None:
+            srv, name = srv.split(':')
+        objs = self.p.serv('aws:onpremise:obj_store')
+        return objs.get(srv, name)
 
+    def build_services(self):
         for srv, kwargs in self.cfg.extra_srv:
             self.p.serv(self.api2builder[srv]).init(**kwargs)
 
+    def inject_dependencies(self):
+        for srv, kwargs in self.cfg.extra_srv:
+            self.p.serv(self.api2builder[srv]).inject_dependencies(**kwargs)
+
+    def build_api(self, api_name, env):
+        self.p.env = env
+
         api = self.cfg.apis[api_name]
-        return self.p.serv(self.api2builder[api.api_type]).build_api(api, env)
+        builder = self.p.serv(self.api2builder[api.api_type])
+
+        return builder.build_api(api, env)
+
+    def build_all(self, env):
+        self.build_services()
+        self.inject_dependencies()
+
+        apps = []
+
+        for api_name, api in self.cfg.apis.items():
+            apps.append(self.build_api(api_name, env=env))
+
+        return apps

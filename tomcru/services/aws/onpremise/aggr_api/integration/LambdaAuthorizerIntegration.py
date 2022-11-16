@@ -16,7 +16,9 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         self.source = cfg.src_in
         self.source_name = cfg.src_name
 
-        if self.source == 'query':
+        if self.source is None:
+            self.source = 'headers'
+        elif self.source == 'query':
             self.source = 'queryStringParameters'
         else:
             self.source += 's'

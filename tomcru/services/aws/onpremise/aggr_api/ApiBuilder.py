@@ -34,6 +34,7 @@ class ApiBuilder(ApiGwBuilderCore):
 
         self._inject_layers()
 
+        # todo: ITT: layers & boto kivesz api_b ből
         self._build_authorizers()
         _controllers, _index = self._build_controllers(api)
 

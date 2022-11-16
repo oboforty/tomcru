@@ -23,7 +23,6 @@ class ObjStore:
         return self.objects.get(serv+':'+obj_id)
 
     def add(self, serv, obj_id, obj):
-        print("inyangnyong", serv, obj_id, id(obj), obj)
         self.objects[serv+':'+obj_id] = obj
 
     def has(self, serv, obj_id):

@@ -32,7 +32,7 @@ class TomcruApiLambdaAuthorizerDescriptor(TomcruApiAuthorizerDescriptor):
 
 
 class TomcruApiOIDCAuthorizerDescriptor(TomcruApiAuthorizerDescriptor):
-    def __init__(self, auth_id, endpoint, audience: list):
+    def __init__(self, auth_id, endpoint, audience, scopes):
         """
 
         :param auth_type:
@@ -40,6 +40,7 @@ class TomcruApiOIDCAuthorizerDescriptor(TomcruApiAuthorizerDescriptor):
         """
         super().__init__(auth_id, 'oidc', endpoint)
         self.audience = audience
+        self.scopes = scopes
 
     @property
     def endpoint_url(self):

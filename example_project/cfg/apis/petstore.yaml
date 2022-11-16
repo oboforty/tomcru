@@ -98,8 +98,11 @@ components:
     DoorsAuth2:
       type: openIdConnect
       openIdConnectUrl: https://example.com/.well-known/openid-configuration
-      x-oidc-audience:
-        - MyApi
+      x-oidc:
+        audience:
+          - MyApi
+        scopes:
+          - profile
   schemas:
     Pet:
       type: object

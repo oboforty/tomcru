@@ -1,5 +1,6 @@
 from tomcru import TomcruApiOIDCAuthorizerDescriptor
 
+
 class SAMOIDCAuthBuilder:
     def __init__(self, param_builder):
         self.param_builder = param_builder
@@ -17,5 +18,6 @@ class SAMOIDCAuthBuilder:
 
         if issuer: auth_integ['jwtConfiguration']['issuer'] = issuer
         if auth.audience: auth_integ['jwtConfiguration']['audience'] = auth.audience
+        if auth.scopes: auth_integ['AuthorizationScopes'] = auth.scopes
 
         return auth_integ
