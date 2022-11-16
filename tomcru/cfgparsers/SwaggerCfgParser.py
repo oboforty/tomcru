@@ -70,11 +70,11 @@ class SwaggerCfgParser:
                     # try parsing rest of swagger and deduct a mockable response instead?
                     raise NotImplementedError("")
 
+                # subset of the swagger is referenced from the tomcru cfg so that it can be modified for SAM building
+                integ.spec_ref = operation
+
                 cfg_api_.routes.setdefault(route, TomcruRouteDescriptor(route, group, api_name))
                 cfg_api_.routes[route].add_endpoint(integ)
-
-                # we must leave a temporal reference in the swagger spec as well so that SAM can build it
-                operation['x-integ'] = integ
 
     def _get_authorizer(self, auth_id, spec: dict):
 

@@ -51,6 +51,8 @@ class MyMetaFinder(MetaPathFinder):
             _loader = MyLoader(filename, self.injected_obj) if self.injected_obj else None
             return spec_from_file_location(fullname, filename, loader=_loader, submodule_search_locations=submodule_locations)
 
+    def __repr__(self):
+        return f'<{self.__class__.__name__} {", ".join(self.keywords)} paths={", ".join(self.paths)} object={self.injected_obj}>'
 
 class MyLoader(Loader):
     def __init__(self, filename, injectable):
@@ -68,6 +70,9 @@ class MyLoader(Loader):
         # # manipulate data some way...
         #
         # exec(data, vars(module))
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__} {", ".join(self.filename)} object={self.injectable}>'
 
 _registered_finders = []
 
@@ -90,8 +95,10 @@ def inject(service_filter_keywords, service_paths, injectable=None):
 
 
 def clean_inject(f):
-    sys.meta_path.remove(f)
-    _registered_finders.remove(f)
+    finder = next(filter(lambda x: f in x.keywords, _registered_finders))
+
+    sys.meta_path.remove(finder)
+    _registered_finders.remove(finder)
 
 
 def cleanup_injects():

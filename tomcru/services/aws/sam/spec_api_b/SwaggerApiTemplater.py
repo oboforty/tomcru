@@ -1,5 +1,4 @@
-from tomcru import TomcruProject, TomcruApiDescriptor, TomcruEndpointDescriptor, TomcruLambdaIntegrationDescription, TomcruApiLambdaAuthorizerDescriptor, TomcruApiOIDCAuthorizerDescriptor
-from tomcru.yaml_custom import Ref, GetAtt, Join
+from tomcru import TomcruProject, TomcruApiDescriptor, TomcruEndpointDescriptor, TomcruLambdaIntegrationDescription, TomcruApiLambdaAuthorizerDescriptor, TomcruApiOIDCAuthorizerDescriptor, TomcruRouteDescriptor
 
 from .integrations.SAMLambdaBuilder import SAMLambdaBuilder
 from .authorizers.SAMLambdaAuthBuilder import SAMLambdaAuthBuilder
@@ -56,14 +55,20 @@ class SwaggerApiTemplater:
                 auth_spec['x-amazon-apigateway-authorizer'] = auth_builder.build(auth_id, auth, apiopts)
 
     def _build_endpoints(self, spec, api: TomcruApiDescriptor):
-        for route, ops in spec['paths'].items():
 
-            for method, op in ops.items():
-                integ_cfg: TomcruEndpointDescriptor = op.pop('x-integ')
-                #route_cfg = api.routes[route]
+        ro: TomcruRouteDescriptor
+        for route, ro in api.routes.items():
 
-                integ_builder = self.integrations_b[type(integ_cfg)]
-                op['x-amazon-apigateway-integration'] = integ_builder.build(integ_cfg)
+            endpoint: TomcruEndpointDescriptor
+            for endpoint in ro.endpoints:
+                op = endpoint.spec_ref
 
-                if integ_cfg.auth:
-                    op['security'] = [{integ_cfg.auth: []}]
+                if not op:
+                    print("        MISSING SWAGGER REF for", endpoint)
+                    continue
+
+                integ_builder = self.integrations_b[type(endpoint)]
+                op['x-amazon-apigateway-integration'] = integ_builder.build(endpoint)
+
+                if endpoint.auth:
+                    op['security'] = [{endpoint.auth: []}]

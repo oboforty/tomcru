@@ -65,7 +65,7 @@ paths:
       summary: Info for a specific pet
       operationId: showPetById
       x-lambda: pets/ViewPet
-      x-auth: OpenIdAuth
+      #x-auth: OpenIdAuth
       tags:
         - pets
       parameters:

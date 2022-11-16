@@ -3,7 +3,7 @@ import os
 from eme.entities import load_settings
 
 from tomcru import TomcruCfg, TomcruRouteDescriptor, TomcruEndpointDescriptor, TomcruApiDescriptor, \
-    TomcruApiLambdaAuthorizerDescriptor, TomcruLambdaIntegrationDescription, TomcruApiAuthorizerDescriptor, TomcruSwaggerIntegration, TomcruApiOIDCAuthorizerDescriptor
+    TomcruApiLambdaAuthorizerDescriptor, TomcruLambdaIntegrationDescription, TomcruApiAuthorizerDescriptor, TomcruSwaggerIntegrationDescription, TomcruApiOIDCAuthorizerDescriptor
 
 
 class BaseCfgParser:
@@ -124,8 +124,9 @@ class BaseCfgParser:
                 endpoint_integ = self._get_integ(api_name, integ_opts, check_files, route, method)
 
                 # add Api Gateway integration
-                cfg_api_.routes.setdefault(route, TomcruRouteDescriptor(endpoint_integ.route, endpoint_integ.group, api_name))
-                cfg_api_.routes[route].add_endpoint(endpoint_integ)
+                if endpoint_integ:
+                    cfg_api_.routes.setdefault(route, TomcruRouteDescriptor(endpoint_integ.route, endpoint_integ.group, api_name))
+                    cfg_api_.routes[route].add_endpoint(endpoint_integ)
 
     def parser(self, p):
         return self.subparsers[p]
@@ -175,7 +176,7 @@ class BaseCfgParser:
             # Lambda integration
             integ = TomcruLambdaIntegrationDescription(group, route, method, lamb_name, layers, role, auth)
         elif 'swagger' in params:
-            integ = TomcruSwaggerIntegration('swagger', route, method, auth, params['swagger'])
+            integ = TomcruSwaggerIntegrationDescription('swagger', route, method, params['swagger'])
         else:
             raise Exception(f"Integration not recognized!")
 

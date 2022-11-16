@@ -1,5 +1,4 @@
-from core import utils
-from tomcru import TomcruProject
+from tomcru import TomcruProject, utils
 
 
 class EmeAppBuilder:

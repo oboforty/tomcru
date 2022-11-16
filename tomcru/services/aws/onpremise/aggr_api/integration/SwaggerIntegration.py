@@ -1,36 +1,39 @@
 import json
 import os
+from functools import cache
 from io import StringIO
+from json import JSONEncoder
 
 #import yaml
 from tomcru.yaml_custom import yaml
-from eme.entities import EntityJSONEncoder
 
 from flask import request, Response, Flask, jsonify
 from flask_swagger_ui import get_swaggerui_blueprint
 
-from tomcru import TomcruApiDescriptor, TomcruSwaggerIntegration
+from tomcru import TomcruApiDescriptor, TomcruSwaggerIntegrationDescription
 
 from .TomcruApiGWHttpIntegration import TomcruApiGWHttpIntegration
 
 
+#
+# class TomcruSpecialObjectsJSONEncoder(JSONEncoder):
+#     def default(self, obj):
+#         if hasattr(obj, '_tomcru_json_serializer'):
+#             return str(obj._tomcru_json_serializer)
+#
+#         return JSONEncoder.default(self, obj)
+#
+
+
 class SwaggerIntegration(TomcruApiGWHttpIntegration):
 
-    def __init__(self, api: TomcruApiDescriptor, endpoint: TomcruSwaggerIntegration, auth, env=None):
+    def __init__(self, api: TomcruApiDescriptor, endpoint: TomcruSwaggerIntegrationDescription, swagger_converter, env=None):
         # self.spec = api.spec
         # self.api_name = api.api_name
+        self.api = api
         self.endpoint = endpoint
-        self.auth_integ = auth
         self.env = env
-        self.swagger_content: str | None = None
-
-        if self.endpoint.type == 'ui':
-            # display swagger UI
-            pass
-        elif self.endpoint.type == 'spec':
-            self.get_swagger_content(api, endpoint)
-        else:
-            raise NotImplementedError("issue")
+        self.swagger_converter = swagger_converter
 
     def on_request(self, **kwargs):
 
@@ -38,24 +41,32 @@ class SwaggerIntegration(TomcruApiGWHttpIntegration):
 
         if self.endpoint.type == 'ui':
             # display swagger UI
-            return "hello teszomsz"
+            return "Something went wrong with the onpremise request transition of Swagger UI."
         elif self.endpoint.type == 'spec':
-            r = Response(self.swagger_content, status=200)
+            swagger_content = self.get_swagger_content(self.api, self.endpoint)
+
+            r = Response(swagger_content, status=200)
             r.headers['content-type'] = self.content_type
             return r
 
+    @cache
     def get_swagger_content(self, api: TomcruApiDescriptor, endpoint):
         self.content_type = f'application/{endpoint.req_content}'
 
+        if not api.spec:
+            # generate swagger from tomcru cfg
+            api.spec = self.swagger_converter.convert_to_swagger(api)
+
         if 'json' == endpoint.req_content:
-            self.swagger_content = json.dumps(api.spec)
+            swagger_content = json.dumps(api.spec)
         else:
             sth = StringIO()
             yaml.dump(api.spec, stream=sth)
-            self.swagger_content = sth.getvalue()
+            swagger_content = sth.getvalue()
 
+        return swagger_content
 
-def integrate_swagger_ui_blueprint(app: Flask, swagger_endpoint: TomcruSwaggerIntegration, ui_endpoint: TomcruSwaggerIntegration):
+def integrate_swagger_ui_blueprint(app: Flask, swagger_endpoint: TomcruSwaggerIntegrationDescription, ui_endpoint: TomcruSwaggerIntegrationDescription):
     swaggerui_blueprint = get_swaggerui_blueprint(
         ui_endpoint.route,
         swagger_endpoint.route,

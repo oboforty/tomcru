@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from tomcru import TomcruProject, TomcruApiDescriptor, TomcruLambdaIntegrationDescription, TomcruApiLambdaAuthorizerDescriptor
+from tomcru import TomcruProject, TomcruApiDescriptor, TomcruLambdaIntegrationDescription, TomcruApiLambdaAuthorizerDescriptor, TomcruSwaggerIntegrationDescription
 
 
 class Eme2Swagger:
@@ -65,5 +65,7 @@ class Eme2Swagger:
                     'auth': endpoint.auth
                 }
             }
+        elif isinstance(endpoint, TomcruSwaggerIntegrationDescription):
+            return {}
         else:
             raise NotImplementedError(str(endpoint))

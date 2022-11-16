@@ -4,7 +4,7 @@ from typing import Dict
 from eme.entities import load_handlers
 from flask import request
 
-from tomcru import TomcruApiDescriptor, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruLambdaIntegrationDescription, TomcruSwaggerIntegration
+from tomcru import TomcruApiDescriptor, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruLambdaIntegrationDescription, TomcruSwaggerIntegrationDescription
 from .ApiGwBuilderCore import ApiGwBuilderCore
 
 from .controllers.EmeProxyController import EmeProxyController
@@ -45,11 +45,12 @@ class ApiBuilder(ApiGwBuilderCore):
         return app
 
     def _build_controllers(self, api):
+        swagger_converter = self.p.serv('::eme2swagger')
 
         # build controllers
         _controllers = {}
         _index = None
-        _swagger: Dict[str, TomcruSwaggerIntegration | None] = {"json": None, "html": None, "yaml": None}
+        _swagger: Dict[str, TomcruSwaggerIntegrationDescription | None] = {"json": None, "html": None, "yaml": None}
 
         # write endpoints to lambda + integrations
         ro: TomcruRouteDescriptor
@@ -65,11 +66,11 @@ class ApiBuilder(ApiGwBuilderCore):
                 if isinstance(endpoint, TomcruLambdaIntegrationDescription):
                     # build lambda integration
                     _integration = LambdaIntegration(endpoint, auth, self.p.serv('aws:onpremise:lambda_b'), env=self.env)
-                elif isinstance(endpoint, TomcruSwaggerIntegration):
+                elif isinstance(endpoint, TomcruSwaggerIntegrationDescription):
                     _swagger[endpoint.req_content] = endpoint
 
                     if endpoint.req_content != 'html':
-                        _integration = SwaggerIntegration(api, endpoint, auth, env=self.env)
+                        _integration = SwaggerIntegration(api, endpoint, swagger_converter, env=self.env)
                     else:
                         continue
                 else:
@@ -164,10 +165,13 @@ class ApiBuilder(ApiGwBuilderCore):
         return f'{group}:{method.lower()}_{integ_id}'
 
     def get_called_endpoint(self, **kwargs) -> TomcruEndpointDescriptor:
-        aws_url_rule = str(request.url_rule).replace('<', '{').replace('>', '}')
+        # find relevant api by port
+        port = request.host.split(':')[1]
+        port_apis = {v['port']: k for k, v in self.apigw_cfg.conf.items() if isinstance(v, dict) and k != '__default__'}
+        api = self.cfg.apis[port_apis[port]]
 
-        # todo: @later: maybe we can optimize by fetching api directly
-        api = next(filter(lambda x: aws_url_rule in x.routes, self.cfg.apis.values()))
+        # find route by flask request route
+        aws_url_rule = str(request.url_rule).replace('<', '{').replace('>', '}')
         route = api.routes[aws_url_rule]
 
         endpoint = next(filter(lambda x: x.endpoint_id == request.endpoint, route.endpoints), None)

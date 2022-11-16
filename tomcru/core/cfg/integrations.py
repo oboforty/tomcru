@@ -2,6 +2,7 @@ import os
 
 
 class TomcruEndpointDescriptor:
+
     def __init__(self, group, route, method, auth=None):
         """
 
@@ -13,6 +14,8 @@ class TomcruEndpointDescriptor:
         self.method: str = method
         self.group = group
         self.auth = auth
+
+        self.spec_ref: dict | None = None
 
         # self.integration: TomcruEndpointIntegration
         # self.lamb: str = lamb
@@ -44,8 +47,12 @@ class TomcruEndpointDescriptor:
     def endpoint(self):
         return self.route
 
+    @property
+    def _tomcru_json_serializer(self):
+        return self.endpoint_id
 
 class TomcruLambdaIntegrationDescription(TomcruEndpointDescriptor):
+
     def __init__(self, group, route, method, lamb_name, layers, role, auth):
         """
 
@@ -81,17 +88,16 @@ class TomcruLambdaIntegrationDescription(TomcruEndpointDescriptor):
         yield self.role
 
 
-class TomcruSwaggerIntegration(TomcruEndpointDescriptor):
-    def __init__(self, group, route, method, auth, type):
+class TomcruSwaggerIntegrationDescription(TomcruEndpointDescriptor):
+    def __init__(self, group, route, method, type):
         """
 
         :param group:
         :param route:
         :param method:
-        :param auth:
         :param type:
         """
-        super().__init__(group, route, method, auth)
+        super().__init__(group, route, method, None)
 
         self.type = type
         if self.type == 'spec':
