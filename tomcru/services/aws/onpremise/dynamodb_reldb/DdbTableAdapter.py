@@ -6,13 +6,14 @@ from sqlalchemy import text
 
 
 class DdbTableAdapter:
-    def __init__(self, sess, ent_obj):
+    def __init__(self, sess, ent_obj, autocommit=True):
         self.T = ent_obj
         self.session = sess
         self.table_name = self.T.__tablename__
 
         self.partition_key = ent_obj.partition_key
         self.sort_key = ent_obj.sort_key
+        self._autocommit = autocommit
 
     def _get_ent(self, Key):
         if self.sort_key:
@@ -45,7 +46,9 @@ class DdbTableAdapter:
             ent.ddb_content = Item
 
         self.session.add(ent)
-        self.session.commit()
+
+        if self._autocommit:
+            self.session.commit()
 
         return {'Item': ent.ddb_content}
 
@@ -57,7 +60,9 @@ class DdbTableAdapter:
             raise ClientError("not_found", None)
         else:
             self.session.delete(ent)
-            self.session.commit()
+
+            if self._autocommit:
+                self.session.commit()
 
         return True
 
@@ -171,6 +176,8 @@ class DdbTableAdapter:
 
         Q = self.session.query(self.T)
 
+        raise NotImplementedError("implement DDB index if present")
+
         _exprs = KeyConditionExpression.split(' AND ')
         for _expr in _exprs:
             if ' = ' in _expr:
@@ -195,16 +202,17 @@ class DdbTableAdapter:
         }
 
     def batch_writer(self, **kwargs):
-        return self
+        return DdbTableAdapter(self.session, self.T, autocommit=False)
 
     def batch_reader(self, **kwargs):
-        return self
+        return DdbTableAdapter(self.session, self.T)
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+        # batch writer used in a python contexts uses autocommit=False
+        self.session.commit()
 
     def _get_key(self, Item):
         if not isinstance(Item, dict):
@@ -221,3 +229,7 @@ class DdbTableAdapter:
             _key[self.sort_key] = Item[self.sort_key]
 
         return _key
+
+    def _truncate(self):
+        self.session.execute(f'''TRUNCATE TABLE "{self.table_name}"''')
+        self.session.commit()

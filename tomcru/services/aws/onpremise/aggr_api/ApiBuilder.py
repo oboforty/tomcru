@@ -167,7 +167,7 @@ class ApiBuilder(ApiGwBuilderCore):
     def get_called_endpoint(self, **kwargs) -> TomcruEndpointDescriptor:
         # find relevant api by port
         port = request.host.split(':')[1]
-        port_apis = {v['port']: k for k, v in self.apigw_cfg.conf.items() if isinstance(v, dict) and k != '__default__'}
+        port_apis = {v['port']: k for k, v in self.apigw_cfg.conf.items() if isinstance(v, dict) and k != '__default__' and 'port' in v}
         api = self.cfg.apis[port_apis[port]]
 
         # find route by flask request route

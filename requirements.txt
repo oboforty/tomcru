@@ -1,7 +1,8 @@
-eme
 prance
 apispec
+openapi-spec-validator
 flask-swagger-ui
-pyjwt==2.6.0
+eme~=5.3
+pyjwt~=2.6
 requests
 botocore

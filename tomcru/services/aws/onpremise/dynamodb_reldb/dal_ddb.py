@@ -1,24 +1,34 @@
-from sqlalchemy import Column, String, Integer, LargeBinary
+from sqlalchemy import Column, String, Integer, LargeBinary, Index
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-from eme.data_access import JSON_GEN
-from eme.entities import load_settings
+from .SqlAlchemyJSONType import JSON_GEN
 
 
 def build_database(app_path, dalcfg: dict):
     fileloc = dalcfg.pop('__fileloc__', None)
+    ctx_cfg = dalcfg.pop('__ctx__')
+    dsn = ctx_cfg['dsn']
+    should_build_database = False
 
-    db_file = app_path + '/d.db'
-    should_build_database = os.path.exists(db_file)
+    if dsn.startswith('sqlite://'):
+        should_build_database = not os.path.exists(dsn.split('///')[1])
+        connect_args = {'check_same_thread': False}
+    elif dsn.startswith('postgresql://'):
+        connect_args = {}
+    else:
+        raise Exception("DSN not supported: " + str(dsn))
 
     # create sqlite engine
     #dalcfg = load_settings(app_path + '/sam/emecfg/ddb.ini')
-    db_engine = create_engine(f'sqlite:///{db_file}', connect_args={'check_same_thread': False})
+    db_engine = create_engine(dsn, connect_args=connect_args)
     Session = sessionmaker(bind=db_engine)
     db_session = Session()
+
+    if dsn.startswith('postgresql://'):
+        should_build_database = not db_engine.engine.execute("SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public');").fetchone()[0]
 
     # build table objects
     EntityBase = declarative_base()
@@ -36,9 +46,12 @@ def build_database(app_path, dalcfg: dict):
     for table_name, descr in dalcfg.items():
         _tables[table_name] = build_table(AbstractModel, table_name, descr.copy())
 
-    if not should_build_database:
+    if should_build_database:
         # migrate files
-        # EntityBase.metadata.drop_all(ctx.db_engine, tables=drop_order())
+        try:
+            EntityBase.metadata.drop_all(db_engine)
+        except:
+            pass
         EntityBase.metadata.create_all(db_engine)
 
     return db_session, _tables
@@ -49,22 +62,28 @@ def build_table(AbstractModel, table_name, tblcfg):
     }
     pkey = tblcfg.pop('partition_key')
     skey = tblcfg.pop('sort_key', None)
-    rcu, wcu = tblcfg.pop('rate_simulation', (float('inf'), float('inf')))
+    rcu, wcu = tblcfg.pop('provision', (float('inf'), float('inf')))
 
     _declr['__tablename__'] = table_name
 
+    # build columns (partition key, sort key)
     build_column(pkey, _declr, tblcfg, primary_key=True)
-
     if skey:
         build_column(skey, _declr, tblcfg, primary_key=True)
 
+    # build extra columns
     for idx, column_name in tblcfg.items():
-        if idx.endswith('-type') or idx.endswith('-len'):
+        if idx.endswith('-type') or idx.endswith('-len') or idx.endswith('-index'):
             continue
-
         build_column(column_name, _declr, tblcfg)
 
+    # build content column
     build_column('ddb_content', _declr, {'ddb_content-type': 'json'})
+
+    # add indexes to content column
+    for idx, index_type in tblcfg.items():
+        if idx.endswith('-index'):
+            build_index(idx, 'ddb_content', index_type, _declr)
 
     # add extras
     _declr['partition_key'] = pkey
@@ -92,60 +111,7 @@ def build_column(column, _declr, tblcfg, **kwargs):
     _declr[column] = c
     return c
 
-#
-# class Song(EntityBase):
-#     __tablename__ = 'songs'
-#
-#     song_id = Column(GUID(), primary_key=True, default=uuid.uuid4)
-#     name = Column(String(255))
-#     artist = Column(String(255))
-#     about = Column(Text())
-#
-#     instrument = Column(SmallInteger())
-#     skey = Column(String(20))
-#     strength = Column(SmallInteger())
-#     tempo = Column(SmallInteger())
-#     beats_per_measure = Column(SmallInteger())
-#     beats_type = Column(SmallInteger())
-#
-#     notes = Column(Text())
-#     ropts = Column(JSON_GEN())
-#
-#     def __init__(self, **kwargs):
-#         self.song_id = kwargs.get('song_id')
-#
-#         self.set(**kwargs)
-#
-#     def set(self, **kwargs):
-#         self.name = kwargs.get('name')
-#         self.artist = kwargs.get('artist')
-#         self.about = kwargs.get('about')
-#         self.instrument = kwargs.get('instrument')
-#         self.skey = kwargs.get('skey', "G_major")
-#         self.strength = kwargs.get('strength', 1)
-#         self.tempo = kwargs.get('tempo', 90)
-#         self.beats_per_measure = kwargs.get('beats_per_measure', 4)
-#         self.beats_type = kwargs.get('beats_type', 4)
-#         self.notes = kwargs.get('notes', "")
-#         self.ropts = kwargs.get('ropts', {})
-#         self.is_scale = kwargs.get('is_scale', False)
-#
-#     @property
-#     def view(self):
-#         return {
-#             'song_id': self.song_id,
-#             'name': self.name,
-#             'artist': self.artist,
-#             'about': self.about,
-#             'instrument': self.instrument,
-#             'skey': self.skey,
-#             'strength': self.strength,
-#             'tempo': self.tempo,
-#             'beats_per_measure': self.beats_per_measure,
-#             'beats_type': self.beats_type,
-#             'ropts': self.ropts,
-#         }
-#
-#     @property
-#     def time_signature(self):
-#         return (self.beats_per_measure, self.beats_type)
+def build_index(idx, column_name, index_type, _declr):
+    # _SQL_IDX = """CREATE INDEX ON {table_name} USING {impl} ({fk}{suffix});"""
+
+    _declr['__table_args__'] = (Index(idx, column_name, postgresql_using=index_type), )

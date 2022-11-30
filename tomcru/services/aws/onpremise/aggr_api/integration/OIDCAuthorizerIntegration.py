@@ -76,7 +76,10 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
         # fetch OIDC endpoint and find JWKS
         headers = {'Accept': 'application/json'}
-        r = requests.get(self.oidc_ep, headers=headers)
+        try:
+            r = requests.get(self.oidc_ep, headers=headers)
+        except requests.exceptions.ConnectionError:
+            raise AWSOIDCException()
 
         if r.status_code != 200:
             raise AWSOIDCException()
