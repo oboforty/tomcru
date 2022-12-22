@@ -1,9 +1,10 @@
 
 class EmeProxyController:
-    def __init__(self, group, on_request):
+    def __init__(self, group, apiopts, on_request):
         self.group = group
         self.methods = {}
         self.on_request = on_request
+        self.api_root = apiopts.get('api_root')
 
     def __getattr__(self, item):
         if item == 'group':

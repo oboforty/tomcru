@@ -22,6 +22,7 @@ class SwaggerCfgParser:
         if not os.path.exists(file): raise Exception("File doesnt exist: " + file)
 
         f_resolved = ResolvingParser(file)
+
         f = BaseParser(file)
         # spec = APISpec(
         #     title=f.specification['info']['title'],
@@ -60,11 +61,13 @@ class SwaggerCfgParser:
                 auth = operation.pop('x-auth', default_auth)
                 integ: TomcruEndpointDescriptor
 
+                integ_opts = operation.pop('x-integ', {})
+
                 if 'x-lambda' in operation:
                     # parse lambda integration
                     group, lamb, role, layers = self._get_lambda(operation.pop('x-lambda'))
 
-                    integ = TomcruLambdaIntegrationDescription(group, route, method, lamb, layers, role, auth)
+                    integ = TomcruLambdaIntegrationDescription(group, route, method, lamb, layers, role, auth, integ_opts)
                 else:
                     # parse empty (mock) integration
                     # try parsing rest of swagger and deduct a mockable response instead?
@@ -109,17 +112,3 @@ class SwaggerCfgParser:
         # fetch endpoint
         group, integ_id = lamb.split('/')
         return group, integ_id, role, layers
-
-# todo: create not read tomcru cfg!
-# self.cfg.authorizers[auth_id] = auth
-#
-# if isinstance(auth, TomcruApiLambdaAuthorizerDescriptor):
-#     if 'external' == auth.lambda_source:
-#         pass
-#     else:
-#         pass
-# elif isinstance(auth, TomcruApiJWTAuthorizerDescriptor):
-#     pass
-# else:
-#     raise NotImplementedError(str(type(auth)))
-

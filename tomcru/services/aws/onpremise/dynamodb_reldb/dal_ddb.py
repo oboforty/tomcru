@@ -81,9 +81,15 @@ def build_table(AbstractModel, table_name, tblcfg):
     build_column('ddb_content', _declr, {'ddb_content-type': 'json'})
 
     # add indexes to content column
-    for idx, index_type in tblcfg.items():
+    _declr['_indexes'] = {}
+    ddb_content_idx_built = False
+    for idx, attributes in tblcfg.items():
         if idx.endswith('-index'):
-            build_index(idx, 'ddb_content', index_type, _declr)
+            if not ddb_content_idx_built:
+                build_index(idx, 'ddb_content', 'gin', _declr)
+                ddb_content_idx_built = True
+
+            _declr['_indexes'][idx] = set(attributes) if not isinstance(attributes, str) else attributes
 
     # add extras
     _declr['partition_key'] = pkey
@@ -97,7 +103,7 @@ def build_column(column, _declr, tblcfg, **kwargs):
     t = tblcfg.pop(column+'-type', 'str')
 
     if t == 'str':
-        t = String(255)
+        t = String(2048)
     elif t == 'number':
         t = Integer()
     elif t == 'binary':

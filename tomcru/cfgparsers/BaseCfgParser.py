@@ -131,8 +131,17 @@ class BaseCfgParser:
     def parser(self, p):
         return self.subparsers[p]
 
-    def add_layer(self, layer_name, files=None, packages=None, folder=None, single_file=False, in_house=True):
-        self.cfg.layers.append((layer_name, files, packages, folder, single_file, in_house))
+    def add_layer(self, layer_name, packages=None, /, folder=None, *, in_house=True):
+        """
+        Adds a python package as Lambda Layer for the project.
+
+        :param layer_name: Layer's name as referenced within AWS and the Tomcru configuration. The zip file uploaded to Lambda also has this name
+        :param packages: List of directories (python packages) to be added to the zip file.
+        :param folder: Package path
+        :param in_house: set true if the layer package is within the project (./layers/ directory)
+        :return:
+        """
+        self.cfg.layers.append((layer_name, packages, folder, in_house))
 
     def _get_integ(self, api_name, integ_opts, check_files: bool, route, method) -> TomcruEndpointDescriptor:
         """

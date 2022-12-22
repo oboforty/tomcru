@@ -16,7 +16,7 @@ class LambdaBuilder:
         return {
             'AutoPublishAlias': 'live',
             'Handler': 'app.handler',
-            'Runtime': 'python3.9',
+            'Runtime': 'python3.10',
             'Timeout': 120,
             'MemorySize': 128,
             'Architectures': ['arm64']
@@ -54,7 +54,7 @@ class LambdaBuilder:
     def build_layers(self):
         layers = {}
 
-        for (layer_name, files, packages, folder, single_file, in_house) in self.cfg.layers:
+        for (layer_name, _, _, _) in self.cfg.layers:
             layers[layer_name] = {
                 'Type': 'AWS::Serverless::LayerVersion',
                 'Properties': {

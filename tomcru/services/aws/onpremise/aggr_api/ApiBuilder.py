@@ -38,24 +38,25 @@ class ApiBuilder(ApiGwBuilderCore):
         self.mgr.add_app(app)
 
         self._build_authorizers()
-        _controllers, _index = self._build_controllers(api)
+        _controllers, _index = self._build_controllers(api, apiopts)
 
         self.load_eme_handlers(_controllers, _index)
 
         return app
 
-    def _build_controllers(self, api):
+    def _build_controllers(self, api, apiopts):
         swagger_converter = self.p.serv('::eme2swagger')
 
         # build controllers
         _controllers = {}
         _index = None
         _swagger: Dict[str, TomcruSwaggerIntegrationDescription | None] = {"json": None, "html": None, "yaml": None}
+        api_root = apiopts.get('api_root', '')
 
         # write endpoints to lambda + integrations
         ro: TomcruRouteDescriptor
         for route, ro in api.routes.items():
-            _controllers.setdefault(ro.group, EmeProxyController(ro.group, self.on_request))
+            _controllers.setdefault(ro.group, EmeProxyController(ro.group, apiopts, self.on_request))
 
             endpoint: TomcruEndpointDescriptor
             for endpoint in ro.endpoints:
@@ -83,7 +84,7 @@ class ApiBuilder(ApiGwBuilderCore):
                 # pass endpoint to proxy controller, so that it constructs correct routing (needed for eme apps)
                 _controllers[ro.group].add_method(endpoint, lambda x: NotImplementedError())
                 # app type dependent integration (eme-webapp | flask | fastapi | eme-websocket)
-                self.add_method(endpoint)
+                self.add_method(api_root, endpoint)
 
                 if endpoint.route == '/':
                     _index = endpoint.endpoint_id
@@ -122,7 +123,6 @@ class ApiBuilder(ApiGwBuilderCore):
 
     def create_app(self, api_name, apiopts):
         self.app = EmeWebApi(self.cfg.apis[api_name], apiopts)
-
         return self.app
 
     def load_eme_handlers(self, _controllers, _index=None):
@@ -142,14 +142,15 @@ class ApiBuilder(ApiGwBuilderCore):
         if os.path.exists(_app_path):
             self.app.load_controllers(load_handlers(self.app, 'Controller', path=_app_path), webcfg)
 
-    def add_method(self, endpoint: TomcruEndpointDescriptor, fn_to_call=None):
+    def add_method(self, api_root, endpoint: TomcruEndpointDescriptor, fn_to_call=None):
         """
         Adds method to EME/Flask app
+        :param api_root: api prefix url
         :param app: eme app (flask app)
         :param endpoint: endpoint url to hook to
         """
         # replace AWS APIGW route scheme to flask routing schema
-        _api_route = endpoint.route.replace('{', '<').replace('}', '>')
+        _api_route = api_root + endpoint.route.replace('{', '<').replace('}', '>')
         self.app._custom_routes[endpoint.endpoint_id].add(_api_route)
 
     def get_called_endpoint_id(self) -> str:
@@ -169,10 +170,12 @@ class ApiBuilder(ApiGwBuilderCore):
         port = request.host.split(':')[1]
         port_apis = {v['port']: k for k, v in self.apigw_cfg.conf.items() if isinstance(v, dict) and k != '__default__' and 'port' in v}
         api = self.cfg.apis[port_apis[port]]
+        apigw_cfg = self.apigw_cfg[api.api_name]
+        api_root = apigw_cfg.get('api_root', '')
 
         # find route by flask request route
-        aws_url_rule = str(request.url_rule).replace('<', '{').replace('>', '}')
-        route = api.routes[aws_url_rule]
+        aws_routekey = str(request.url_rule).replace('<', '{').replace('>', '}').removeprefix(api_root)
+        route = api.routes[aws_routekey]
 
         endpoint = next(filter(lambda x: x.endpoint_id == request.endpoint, route.endpoints), None)
 

@@ -26,9 +26,14 @@ class LambdaBuilder:
         """
 
         if self.cfg.layers:
+            _layers_paths = []
+            _layers_keywords = set()
+
             # find layers path on disk
-            _layers_paths = list(map(lambda f: os.path.join(self.cfg.app_path, 'layers', f[3]), self.cfg.layers))
-            _layers_keywords = set(map(lambda f: f[1][0], self.cfg.layers))
+            for layer_name, packages, folder, in_house in self.cfg.layers:
+                _layers_paths.append(os.path.join(self.cfg.app_path, 'layers', folder))
+                _layers_keywords.update(packages)
+
             utils.inject(_layers_keywords, _layers_paths)
 
     def build_lambda(self, lambda_id, env: str):

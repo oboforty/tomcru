@@ -168,15 +168,10 @@ class DdbTableAdapter:
         raise NotImplementedError()
 
     def query(self, ExpressionAttributeValues=None, KeyConditionExpression=None, IndexName=None, **kwargs):
-        if IndexName:
-            print("[] Querying with index:", IndexName)
         # if ExpressionAttributeValues:
         #     for k,v in ExpressionAttributeValues.items():
         #         KeyConditionExpression = KeyConditionExpression.replace(k, str(v))
-
         Q = self.session.query(self.T)
-
-        raise NotImplementedError("implement DDB index if present")
 
         _exprs = KeyConditionExpression.split(' AND ')
         for _expr in _exprs:
@@ -184,15 +179,23 @@ class DdbTableAdapter:
                 attr, _exkey = _expr.split(' = ')
                 val = ExpressionAttributeValues[_exkey]
 
-                Q = Q.filter(text(f'{attr} = "{val}"'))
+                Q = Q.filter(text(f"ddb_content->>'{attr}' = '{val}'"))
             else:
                 print("!! NOT IMPLEMENTED FILTER !!", _expr)
                 # result.append(ent)
 
         result = Q.all()
 
+        if IndexName:
+            print("[] Querying with index:", IndexName)
+
+            attributes = self.T._indexes[IndexName]
+            #Q = self.session.query(*map(lambda attr: getattr(self.T, attr), attributes))
+        else:
+            attributes = 'ALL'
+
         return {
-            'Items': [r.ddb_content for r in result]
+            'Items': [{k:v for k,v in r.ddb_content.items() if k in attributes or attributes == 'ALL'} for r in result]
         }
 
     def batch_get_items(self, RequestItems, **kwargs):

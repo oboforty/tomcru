@@ -3,7 +3,7 @@ import os
 
 class TomcruEndpointDescriptor:
 
-    def __init__(self, group, route, method, auth=None):
+    def __init__(self, group, route, method, auth=None, opts=None):
         """
 
         :param group:
@@ -14,6 +14,7 @@ class TomcruEndpointDescriptor:
         self.method: str = method
         self.group = group
         self.auth = auth
+        self.integ_opts = opts
 
         self.spec_ref: dict | None = None
 
@@ -53,7 +54,7 @@ class TomcruEndpointDescriptor:
 
 class TomcruLambdaIntegrationDescription(TomcruEndpointDescriptor):
 
-    def __init__(self, group, route, method, lamb_name, layers, role, auth):
+    def __init__(self, group, route, method, lamb_name, layers, role, auth, opts):
         """
 
         :param group:
@@ -64,7 +65,7 @@ class TomcruLambdaIntegrationDescription(TomcruEndpointDescriptor):
         :param role:
         :param auth:
         """
-        super().__init__(group, route, method, auth)
+        super().__init__(group, route, method, auth, opts)
 
         self.lamb = lamb_name
         self.layers = layers

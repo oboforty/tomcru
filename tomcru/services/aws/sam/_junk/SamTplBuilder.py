@@ -165,31 +165,26 @@ class SamTplBuilder:
         fh.write(self.tpl_layer.format(name=name, file=name))
 
     def build_layers(self):
-        for (layer_name, files, packages, folder, single_file, in_house) in self.cfg.layers:
+        for (layer_name, packages, folder, in_house) in self.cfg.layers:
             if not in_house:
                 continue
             if folder is None:
                 folder = layer_name#[0:-5]
 
             pck_dir = 'layers/'
-            pckvdir = 'python/lib/python3.9/site-packages/'
+            pckvdir = 'python/lib/python3.10/site-packages/'
 
-            basepath = f'{self.cfg.app_path}layers/'
+            basepath = f'{self.cfg.app_path}layers/{folder}'
 
             with ZipFile(f'{basepath}{layer_name}.zip', 'w') as zipObj2:
-                # Add multiple files to the zip
-                for file in files:
-                    if file.lower() == layer_name.lower() and single_file:
-                        zipObj2.write(f'{basepath}{folder}/{file}.py', f'{pckvdir}{file}.py')
-                    elif file == folder:
-                        zipObj2.write(f'{basepath}{folder}/{folder}/{file}.py', f'{pckvdir}{file}/__init__.py')
-                    else:
-                        zipObj2.write(f'{basepath}{folder}/{folder}/{file}.py', f'{pckvdir}{folder}/{file}.py')
+                for pck in os.listdir(os.path.join(basepath,packages)):
+                    path = os.path.join(basepath,packages,pck)
 
-                if packages:
-                    for pck in os.listdir(basepath+packages):
-                        path = os.path.join(basepath,packages,pck)
-                        for root, dirs, files in os.walk(basepath+packages+'/'+pck):
+                    if os.path.isfile(path):
+
+                    else:
+                        # parse files in package
+                        for root, dirs, files in os.walk(path):
                             for file in files:
                                 rel_dir = os.path.relpath(root, path)
                                 rel_file = os.path.join(rel_dir, file)
