@@ -1,24 +1,21 @@
 import os
 
-from apispec import APISpec
+#from apispec import APISpec
 from prance import ResolvingParser, BaseParser
 
-from tomcru import TomcruCfg, TomcruRouteDescriptor, TomcruEndpointDescriptor, TomcruApiDescriptor, \
+from tomcru import TomcruSubProjectCfg, TomcruRouteDescriptor, TomcruEndpointDescriptor, TomcruApiDescriptor, \
     TomcruApiLambdaAuthorizerDescriptor, TomcruLambdaIntegrationDescription, TomcruApiAuthorizerDescriptor, TomcruApiOIDCAuthorizerDescriptor
 
 
 class SwaggerCfgParser:
-    def __init__(self, project, name):
-        self.proj = project
+    def __init__(self, cfgparser, name):
         self.name = name
-        self.cfg: TomcruCfg | None = None
+        self.cfg: TomcruSubProjectCfg | None = None
 
     def add_cfg(self, cfg):
         self.cfg = cfg
 
-    def add(self, api_name, check_files=False):
-        file = os.path.join(self.cfg.app_path, 'cfg', 'apis', api_name+'.yaml')
-        if not os.path.exists(file): file = file[:-4] + '.yml'
+    def add(self, file, check_files=False):
         if not os.path.exists(file): raise Exception("File doesnt exist: " + file)
 
         f_resolved = ResolvingParser(file)
@@ -30,6 +27,7 @@ class SwaggerCfgParser:
         #     openapi_version=f.semver,
         #     info=dict(f.specification['info']),
         # )
+        api_name = f.specification['info']['title']
 
         # specification = yaml_utils.load_yaml_from_docstring(content)
         # #specification = yaml_utils.load_operations_from_docstring()

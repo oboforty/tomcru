@@ -1,7 +1,7 @@
 import os
 
-from tomcru import TomcruProject, TomcruApiLambdaAuthorizerDescriptor
-from tomcru.yaml_custom import yaml
+from tomcru import TomcruProject
+from core.utils.yaml_custom import yaml
 
 
 class SamAppBuilder:

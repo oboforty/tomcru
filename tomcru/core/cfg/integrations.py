@@ -14,7 +14,7 @@ class TomcruEndpointDescriptor:
         self.method: str = method
         self.group = group
         self.auth = auth
-        self.integ_opts = opts
+        self.integ_opts = opts if opts is not None else {}
 
         self.spec_ref: dict | None = None
 
@@ -29,6 +29,9 @@ class TomcruEndpointDescriptor:
     def __hash__(self):
         # @TODO: append with api name
         return hash(self.endpoint_id)
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
     @property
     def endpoint_id(self):
@@ -112,6 +115,28 @@ class TomcruSwaggerIntegrationDescription(TomcruEndpointDescriptor):
     @property
     def integ_id(self):
         return self.type + '_' + self.req_content
+
+    @property
+    def method_name(self):
+        return f'{self.method.lower()}_{self.integ_id}'
+
+
+class TomcruMockedIntegrationDescription(TomcruEndpointDescriptor):
+    def __init__(self, group, route, method, filename):
+        """
+
+        :param group:
+        :param route:
+        :param method:
+        :param filename:
+        """
+        super().__init__(group, route, method, None)
+
+        self.filename = filename
+
+    @property
+    def integ_id(self):
+        return os.path.basename(self.filename)
 
     @property
     def method_name(self):

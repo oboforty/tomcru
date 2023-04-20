@@ -1,5 +1,5 @@
 from tomcru import TomcruRouteDescriptor, TomcruLambdaIntegrationDescription
-from yaml_custom import GetAtt, Ref
+from core.utils.yaml_custom import GetAtt, Ref
 
 
 class SAMLambdaBuilder:

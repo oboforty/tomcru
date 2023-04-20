@@ -3,7 +3,6 @@ import json
 
 from tomcru import TomcruApiDescriptor, TomcruProject
 
-from eme.mockapi import MockApi
 from flask import Flask, request, jsonify
 
 

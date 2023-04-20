@@ -1,118 +1,91 @@
 import os
+from deprecated import deprecated
 
-from eme.entities import load_settings
-
+from .obj_store import ObjStore
+from .servmgr import ServiceManager
+from ..appbuilders.envmapping import map_env_to_appbuilder
+from ..cfgparsers.EnvParser import EnvParser
 from ..cfgparsers.SwaggerCfgParser import SwaggerCfgParser
 from ..cfgparsers.BaseCfgParser import BaseCfgParser
-from .cfg.api import TomcruCfg
-from .modloader import load_serv
+from ..cfgparsers.MergeCfgParser import MergeCfgParser
+from .cfg.proj import TomcruSubProjectCfg, TomcruEnvCfg
 
 
 class TomcruProject:
 
-    def __init__(self, app_path):
-        self.app_path = app_path
+    def __init__(self):
         self.pck_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
-        self.cfgparser = None
-        self.cfgs = {}
-        self.services = {}
-        self.appbuilders = {}
+        # list of app configs that can be merged
+        # cfgparser: BaseCfgParser | None = None
+        self.cfgs: dict[str, TomcruSubProjectCfg] = {}
         self.active_cfg = None
-        self.env = None
+
+        # list of cloud services
+        # self.services = {}
+
+        # list of environment apps
+        self.envs: dict[str, TomcruEnvCfg] = {}
 
         self.debug_builders = False
+        self.objmgr = ObjStore(self, use_cache=False)
+        self.srvmgr = ServiceManager(self, self.objmgr)
+
+        self.debug = True
 
     @property
-    def cfg(self) -> TomcruCfg:
+    def cfg(self) -> TomcruSubProjectCfg:
         return self.cfgs[self.active_cfg]
 
-    def __enter__(self) -> BaseCfgParser:
-        return self.cfgparser
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.cfgparser.cfg:
-            self.cfgs[self.cfgparser.name] = self.cfgparser.cfg
-
-            if self.active_cfg is None:
-                # default active cfg
-                self.active_cfg = self.cfgparser.name
-
-    def project_builder(self, name):
+    def project_builder(self, name, app_path=None):
         # default cfg parser
-        self.cfgparser = BaseCfgParser(self, name)
-        self.cfgparser.create_cfg(self.app_path, self.pck_path)
+        cfgparser = BaseCfgParser(self, name)
+        cfgparser.create_cfg(app_path, self.pck_path)
 
-        self.cfgparser.add_parser("swagger", SwaggerCfgParser(self, name))
+        cfgparser.add_parser("swagger", SwaggerCfgParser(cfgparser, name))
+        cfgparser.add_parser("merge", MergeCfgParser(cfgparser, name))
+        cfgparser.add_parser("env", EnvParser(cfgparser, name))
 
-        return self
+        self.cfgs[cfgparser.name] = cfgparser.cfg
+        self.active_cfg = cfgparser.name
 
-    def app_builder(self, app_type, **kwargs):
-        app_type, app_implement = app_type.split(':')
-        path = os.path.join(self.cfg.pck_path, 'appbuilders', app_type.lower())
+        return cfgparser
 
-        app_builder_factory = load_serv(path, app_implement.lower())
-        if not app_builder_factory:
-            raise Exception(f"AppBuilder {app_type}:{app_implement} not found")
+    def env(self, env_id, cfg_id=None, **kwargs) -> 'InjectableAppBase':
+        """
 
-        if 'env' in kwargs:
-            self.env = kwargs['env']
-        app_builder = app_builder_factory.app_builder(self, **kwargs)
-        # if not hasattr(app_builder, 'build_app'):
-        #     raise Exception(f'App {app_type} does not have build_app! Path: {path}:{app_implement}')
+        :param env_id:
+        :param kwargs:
+        :return:
+        """
+        _cfg = self.cfg if cfg_id is None else self.cfgs[cfg_id]
 
-        return app_builder
+        # todo: itt: return EnvAppBuilder
+        return map_env_to_appbuilder(self, _cfg, self.envs[env_id])
 
+    @deprecated("Don't call services from the project, instead use environment")
     def serv(self, name):
-        if name not in self.services:
-            self.load_serv(name)
+        env = self.find_env_from_legacy_name(name)
 
-        return self.services.get(name)
+        # load service into cache; cfg
+        return self.env(env.env_id).serv(name)
 
-    def load_serv(self, name, srv=None):
+    @deprecated("Don't call services from the project, instead use environment")
+    def find_env_from_legacy_name(self, name) -> TomcruEnvCfg:
         n = name.split(':')
-        vendor, aim, service = n
-        if not aim: aim = ''
-        if not vendor: vendor = 'general'
+        vendor, target, service_id = n
+        if not target:
+            target = ''
+        if not vendor:
+            vendor = 'general'
 
-        if srv is None:
-            search_path = os.path.join(self.cfg.pck_path, 'services', vendor, aim)
-            srv = load_serv(search_path, service)
+        if target == 'onpremise':
+            # @note: hosted frameworks were incorrectly labeled as onpremise
+            target = 'hosted'
 
-            if srv is None:
-                raise Exception(f"Service {vendor}/{aim}:{service} not found! Search path: {search_path}")
+        env: TomcruEnvCfg = next(filter(lambda env: env.target == target and vendor in env.vendors, self.envs.values()), None)
 
-        # guess interface type
-        if hasattr(srv, 'create_builder'):
-            builder_cfg = self.load_serv_cfg(name)
-            obj = srv.create_builder(self, builder_cfg)
+        if env is None:
+            raise Exception(f"Service not found: {name}")
 
-            # imp = builder_cfg.get('__stack__.implementation')
-            # if imp:
-            #     # also load implementation
-            #     search_path = os.path.join(self.cfg.pck_path, 'services', vendor, aim, 'implementations', imp)
-            #     imp = load_serv(search_path, service)
-            #     obj.imp = imp.create_implementation(self, builder_cfg)
-        else:
-            obj = srv
-
-        self.services[name] = obj
-
-    def load_serv_cfg(self, name):
-        n = name.split(':')
-        vendor, aim, service = n
-        if not aim: aim = ''
-        if not vendor: vendor = 'general'
-
-        builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, self.env, aim, service + '.ini')
-        if not os.path.exists(builder_cfg_file):
-            # try loading cfg without env
-            builder_cfg_file = os.path.join(self.cfg.app_path, 'cfg', vendor, aim, service + '.ini')
-
-        if self.debug_builders:
-            print(name, '->', builder_cfg_file)
-
-        builder_cfg = load_settings(builder_cfg_file)
-        builder_cfg.conf['__fileloc__'] = os.path.dirname(builder_cfg_file)
-
-        return builder_cfg
+        return env

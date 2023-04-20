@@ -1,5 +1,5 @@
 from tomcru import TomcruApiLambdaAuthorizerDescriptor
-from tomcru.yaml_custom import Ref, GetAtt, Join
+from core.utils.yaml_custom import Ref, Join
 
 
 class SAMLambdaAuthBuilder:
