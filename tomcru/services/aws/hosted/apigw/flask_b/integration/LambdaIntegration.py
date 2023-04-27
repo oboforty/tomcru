@@ -37,6 +37,7 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
         event = {
             'version': '2.0',
             'routeKey': route_key,
+            'rawQueryString': request.query_string.decode('utf8'),
             'requestContext': {
                 "protocol": "HTTP/1.1",
                 #"httpMethod": self.endpoint.method,

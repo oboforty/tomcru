@@ -9,11 +9,13 @@ __dir__ = os.path.dirname(os.path.realpath(__file__))
 
 
 class Boto3Builder(ServiceBase):
+    INIT_PRIORITY = 1
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.boto3_obj: Boto3 | None = None
+        # self.boto3_obj: Boto3 | None = None
+        self.boto3_obj = Boto3(self.get_resource, self.opts.get('allowed.clients', cast=set), self.opts.get('allowed.resources', cast=set))
 
     def init(self):
         """
@@ -23,14 +25,15 @@ class Boto3Builder(ServiceBase):
         :return:
         """
 
-        self.boto3_obj = Boto3(self.get_resource, self.opts.get('allowed.clients', cast=set), self.opts.get('allowed.resources', cast=set))
-
         return self.boto3_obj
 
     def inject_dependencies(self):
         """
         Injects mocked boto3 object as importable python package
         """
+
+        if self.boto3_obj is None:
+            raise Exception("Boto3Builder: mock hasn't been initialized yet!")
 
         utils.inject('boto3', __dir__, self.boto3_obj)
 

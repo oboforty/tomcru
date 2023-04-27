@@ -6,7 +6,6 @@ from services.aws.hosted.apigw.api_shared.integration import TomcruApiGWHttpInte
 from .integration import SwaggerIntegration, LambdaIntegration, MockedIntegration
 
 from tomcru import TomcruApiDescriptor, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruLambdaIntegrationDescription, TomcruSwaggerIntegrationDescription, TomcruMockedIntegrationDescription, TomcruApiAuthorizerDescriptor
-from tomcru_jerry import flask_jerry_setup
 from tomcru_jerry.controllers import add_endpoint
 
 __dir__ = os.path.dirname(os.path.realpath(__file__))
@@ -15,6 +14,7 @@ from tomcru.services.aws.hosted.apigw.api_shared.ApiGWBuilderBase import ApiGWBu
 
 
 class ApiGWFlaskBuilder(ApiGWBuilderBase):
+    INIT_PRIORITY = 5
 
     def __init__(self, *args, **kwargs):
         self.apps: dict[str, Flask] = {}
@@ -29,8 +29,6 @@ class ApiGWFlaskBuilder(ApiGWBuilderBase):
 
         api_id = f'{api.api_name}:{port}'
         app = Flask(api_id)
-
-        flask_jerry_setup(app, apiopts)
 
         # set custom attributes
         app.api_name = api_id

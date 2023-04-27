@@ -1,31 +1,39 @@
-from tomcru import TomcruProject, TomcruProjectCfg, TomcruEnvCfg, utils
+from tomcru.core import utils
 
 
 class InjectableAppBase:
 
-    def __init__(self, proj: TomcruProject, cfg: TomcruProjectCfg, env: TomcruEnvCfg):
+    def __init__(self, proj: 'TomcruProject', cfg: 'TomcruProjectCfg', env: 'TomcruEnvCfg'):
         self.p = proj
         self.env = env
         self.cfg = cfg
 
+        self.inited = False
+
     def __enter__(self):
-        self.p.srvmgr.init_services(self.env)
-        self.inject_dependencies()
+        if not self.inited:
+            self.p.srvmgr.load_services(self.env)
 
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.deject_dependencies()
-
-    def inject_dependencies(self):
-        for srv_id, service in self.p.srvmgr:
+        for serv_id, service in self.p.srvmgr:
             if hasattr(service, 'inject_dependencies'):
                 service.inject_dependencies()
 
-    def deject_dependencies(self):
-        for srv_id, service in self.p.srvmgr:
+        if not self.inited:
+            for serv_id, service in sorted(self.p.srvmgr, key=lambda s: s[1].INIT_PRIORITY):
+                if hasattr(service, 'init'):
+                    # todo: debug
+                    print(f"Initializing service {serv_id}[ENV={self.env.env}]")
+                    service.init()
+                else:
+                    print(f"Skipping init on {serv_id}[ENV={self.env.env}]")
+            self.inited = True
+
+        return self
+
+    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
+        for serv_id, service in self.p.srvmgr:
             if hasattr(service, 'deject_dependencies'):
-                service.inject_dependencies()
+                service.deject_dependencies()
 
         utils.cleanup_injects()
 

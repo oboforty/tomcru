@@ -60,16 +60,14 @@ class SwaggerCfgParser:
                 integ: TomcruEndpointDescriptor
 
                 integ_opts = operation.pop('x-integ', {})
+                if integ_opts:
+                    if integ_opts['type'] != 'lambda':
+                        raise NotImplementedError("")
 
-                if 'x-lambda' in operation:
                     # parse lambda integration
-                    group, lamb, role, layers = self._get_lambda(operation.pop('x-lambda'))
+                    group, lamb, role, layers = self._get_lambda(integ_opts)
 
                     integ = TomcruLambdaIntegrationDescription(group, route, method, lamb, layers, role, auth, integ_opts)
-                else:
-                    # parse empty (mock) integration
-                    # try parsing rest of swagger and deduct a mockable response instead?
-                    raise NotImplementedError("")
 
                 # subset of the swagger is referenced from the tomcru cfg so that it can be modified for SAM building
                 integ.spec_ref = operation

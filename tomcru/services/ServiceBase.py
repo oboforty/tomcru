@@ -3,6 +3,8 @@ from tomcru import TomcruProject, TomcruEnvCfg, TomcruSubProjectCfg, utils
 
 
 class ServiceBase:
+    INIT_PRIORITY = 1000
+
     def __init__(self, project: TomcruProject, cfg: utils.SettingWrapper, opts: utils.SettingWrapper, env: TomcruEnvCfg):
         self.p = project
         self.cfg = cfg

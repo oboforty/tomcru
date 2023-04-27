@@ -4,6 +4,8 @@ from tomcru.services.ServiceBase import ServiceBase
 
 
 class DynamoDBBuilder(ServiceBase):
+    INIT_PRIORITY = 2
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -18,12 +20,4 @@ class DynamoDBBuilder(ServiceBase):
         # todo: later: group obj instances by AWS-REGION
         self.ddb = DdbSqlAlchemyAdapter(sess, tables)
 
-        self.service('boto3').add_resource('dynamodb', self)
-
-    def as_boto3_resource(self, **kwargs):
-        """
-        Returns wrapper object for boto3 onpremise mock library
-        :param kwargs: DDB resource/client extra args
-        :return: boto3 resource for DDB
-        """
-        return self.ddb
+        self.service('boto3').add_resource('dynamodb', self.ddb)

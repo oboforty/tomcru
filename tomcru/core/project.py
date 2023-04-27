@@ -4,11 +4,9 @@ from deprecated import deprecated
 from .obj_store import ObjStore
 from .servmgr import ServiceManager
 from ..appbuilders.envmapping import map_env_to_appbuilder
-from ..cfgparsers.EnvParser import EnvParser
-from ..cfgparsers.SwaggerCfgParser import SwaggerCfgParser
-from ..cfgparsers.BaseCfgParser import BaseCfgParser
-from ..cfgparsers.MergeCfgParser import MergeCfgParser
+from ..cfgparsers import BaseCfgParser, _parsers
 from .cfg.proj import TomcruSubProjectCfg, TomcruEnvCfg
+from ..appbuilders.faas.InjectableAppBase import InjectableAppBase
 
 
 class TomcruProject:
@@ -25,7 +23,8 @@ class TomcruProject:
         # self.services = {}
 
         # list of environment apps
-        self.envs: dict[str, TomcruEnvCfg] = {}
+        self.envcfgs: dict[str, TomcruEnvCfg] = {}
+        self.envs: dict[str, InjectableAppBase] = {}
 
         self.debug_builders = False
         self.objmgr = ObjStore(self, use_cache=False)
@@ -42,9 +41,8 @@ class TomcruProject:
         cfgparser = BaseCfgParser(self, name)
         cfgparser.create_cfg(app_path, self.pck_path)
 
-        cfgparser.add_parser("swagger", SwaggerCfgParser(cfgparser, name))
-        cfgparser.add_parser("merge", MergeCfgParser(cfgparser, name))
-        cfgparser.add_parser("env", EnvParser(cfgparser, name))
+        for name, cls in _parsers.items():
+            cfgparser.add_parser(name, cls(cfgparser, name))
 
         self.cfgs[cfgparser.name] = cfgparser.cfg
         self.active_cfg = cfgparser.name
@@ -58,10 +56,16 @@ class TomcruProject:
         :param kwargs:
         :return:
         """
-        _cfg = self.cfg if cfg_id is None else self.cfgs[cfg_id]
+        _env = self.envs.get(env_id)
 
-        # todo: itt: return EnvAppBuilder
-        return map_env_to_appbuilder(self, _cfg, self.envs[env_id])
+        if not _env:
+            _cfg = self.cfg if cfg_id is None else self.cfgs[cfg_id]
+
+            # todo: itt: return EnvAppBuilder
+            _env = map_env_to_appbuilder(self, _cfg, self.envcfgs[env_id])
+            self.envs[env_id] = _env
+
+        return _env
 
     @deprecated("Don't call services from the project, instead use environment")
     def serv(self, name):
@@ -83,7 +87,7 @@ class TomcruProject:
             # @note: hosted frameworks were incorrectly labeled as onpremise
             target = 'hosted'
 
-        env: TomcruEnvCfg = next(filter(lambda env: env.target == target and vendor in env.vendors, self.envs.values()), None)
+        env: TomcruEnvCfg = next(filter(lambda env: env.target == target and vendor in env.vendors, self.envcfgs.values()), None)
 
         if env is None:
             raise Exception(f"Service not found: {name}")

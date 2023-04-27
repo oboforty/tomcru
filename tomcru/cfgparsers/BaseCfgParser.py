@@ -38,40 +38,45 @@ class BaseCfgParser:
         self.cfg = TomcruSubProjectCfg(path, pck_path)
 
     def add_parser(self, cfgpid, cfgp):
-        if not cfgp.cfg: cfgp.cfg = self.cfg
+        if not cfgp.cfg:
+            cfgp.cfg = self.cfg
         self.subparsers[cfgpid] = cfgp
 
     def parse_services(self):
         path = f'{self.cfg.app_path}/cfg'
 
-        for serv in os.listdir(path):
+        print(f"Tomcru: Parsing services in {self.cfg.app_path}")
 
-            # merge toml files before parsing
-            servcfg = {}
-            swaggers = []
+        # merge toml files before parsing
+        all_configs = {}
+        swaggers = []
 
-            for root, dirs, files in os.walk(os.path.join(path, serv)):
-                for file in files:
-                    filepath = os.path.join(root, file)
+        # parse non-swagger config files
+        for root, dirs, files in os.walk(path):
+            for file in files:
+                filepath = os.path.join(root, file)
 
-                    if file.endswith('.toml'):
-                        cfg = toml.load(filepath)
-                    elif file.endswith('.yaml') or file.endswith('yml'):
-                        if serv == 'api' or serv == 'apigw':
-                            # yaml files mark swagger and they're handled by swagger cfg parser
-                            swaggers.append(filepath)
-                            continue
-                        else:
-                            cfg = yaml.load(filepath)
-                    elif file.endswith('.json'):
-                        with open(filepath) as fh:
-                            cfg = json.load(fh)
-                    else:
-                        raise NotImplementedError(filepath)
+                if file.endswith('.openapi.yaml') or file.endswith('.openapi.json') or file.endswith('.swagger.yaml') or file.endswith('.swagger.json'):
+                    # handled by swagger cfg parser
+                    swaggers.append(filepath)
+                    continue
+                elif file.endswith('.toml'):
+                    cfg = toml.load(filepath)
+                elif file.endswith('.yaml') or file.endswith('yml'):
+                    cfg = yaml.load(filepath)
+                    print(123123, '!!!! yaml file !!!', cfg)
+                elif file.endswith('.json'):
+                    with open(filepath) as fh:
+                        cfg = json.load(fh)
+                else:
+                    raise NotImplementedError(filepath)
 
-                    if cfg:
-                        always_merger.merge(servcfg, cfg)
-            #servcfg = deepcopy(servcfg)
+                if cfg:
+                    always_merger.merge(all_configs, cfg)
+                    del cfg
+
+        # iterate config and break them up to services
+        for serv, servcfg in all_configs.items():
 
             if serv == 'apigw':
                 # eme/flask routes file - syntax is interpreted a bit differently
@@ -87,7 +92,6 @@ class BaseCfgParser:
                 if settings.get('parse_swagger', True):
                     for swagger_file in swaggers:
                         self.parser('swagger').add(swagger_file)
-
 
             self.add_service(serv, servcfg)
 
@@ -203,6 +207,8 @@ class BaseCfgParser:
             group, lamb_name = params['lambda'].split('/')
             layers = params.get('layers', apicfg.default_layers)
             role = params.get('role', apicfg.default_role)
+
+            # TODO: ITT: fix parsing layers
 
             # post parse layers
             if isinstance(layers, str):

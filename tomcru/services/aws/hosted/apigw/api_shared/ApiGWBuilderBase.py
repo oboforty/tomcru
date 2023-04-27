@@ -78,6 +78,9 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
         return _index
 
     def get_app(self, api_name):
+        if api_name not in self.apps:
+
+            raise Exception(f"Api {api_name} not found! Available apis: {', '.join(self.apps.keys())}")
         return self.apps[api_name], self.opts.get(f'apis.{api_name}', {})
 
     def on_request(self, **kwargs):

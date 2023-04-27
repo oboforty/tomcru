@@ -10,6 +10,7 @@ from tomcru import TomcruEndpointDescriptor, TomcruProject, TomcruLambdaIntegrat
 
 
 class LambdaBuilder(ServiceBase):
+    INIT_PRIORITY = 4
 
     def init(self):
         pass
@@ -40,8 +41,8 @@ class LambdaBuilder(ServiceBase):
             return
 
         group, lamb = lambda_id.split('/')
-        #_lambd_path = os.path.join(self.env.app_path, 'lambdas', group, lamb)
-        _lambd_path = self.env.app_path
+        _lambd_path = os.path.join(self.env.app_path, 'lambdas', group, lamb)
+        #_lambd_path = self.env.app_path
 
         # configure env variables
         self.set_env_for(lambda_id)
@@ -49,12 +50,13 @@ class LambdaBuilder(ServiceBase):
         # ensure that only local packages are loaded; and packages with the same name from other  lambdas aren't
         _ctx_orig = dict(sys.modules)
 
-        if not os.path.exists(_lambd_path):# or not os.path.exists(os.path.join(_lambd_path, 'app.py')):
+        if not os.path.exists(_lambd_path) or not os.path.exists(os.path.join(_lambd_path, 'app.py')):
             raise IOError("Lambda path does not exists: " + _lambd_path+'/app.py')
 
         # load lambda function
         sys.path.append(_lambd_path)
-        module = import_module(f"lambdas.{group}.{lamb}.app")
+        #module = import_module(f"lambdas.{group}.{lamb}.app")
+        module = import_module(f"app")
         sys.path.remove(_lambd_path)
 
         # restore loaded modules
@@ -96,10 +98,13 @@ class LambdaBuilder(ServiceBase):
         return EmeLambdaContext(cfg)
 
     def set_env_for(self, lamb_id):
-        if lamb_id not in self.env.envvars_lamb:
-            return None
-
-        for k, v in self.env.envvars_lamb[lamb_id].items():
+        # inject global envvars
+        for k, v in self.env.global_envvars.items():
             os.environ.setdefault(k.upper(), str(v))
 
-        return self.env.envvars_lamb[lamb_id]
+        if lamb_id not in self.env.envvars_lamb:
+            return
+
+        # inject lambda specific envvars
+        for k, v in self.env.envvars_lamb[lamb_id].items():
+            os.environ.setdefault(k.upper(), str(v))

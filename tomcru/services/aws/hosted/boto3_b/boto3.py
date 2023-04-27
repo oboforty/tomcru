@@ -11,16 +11,16 @@ class Boto3:
         assert resname in self.allowed_clients
 
         _obj = self._objs_getter(resname)
-        if hasattr(_obj, 'as_boto3_resource'):
-            return _obj.as_boto3_resource(**kwargs)
+        # if hasattr(_obj, 'as_boto3_resource'):
+        #     return _obj.as_boto3_resource(**kwargs)
         return _obj
 
     def resource(self, resname, **kwargs):
         assert resname in self.allowed_resources
 
         _obj = self._objs_getter(resname)
-        if hasattr(_obj, 'as_boto3_resource'):
-            return _obj.as_boto3_resource(**kwargs)
+        # if hasattr(_obj, 'as_boto3_resource'):
+        #     return _obj.as_boto3_resource(**kwargs)
         return _obj
 
     def Session(self):

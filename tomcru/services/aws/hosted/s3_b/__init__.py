@@ -1,3 +1,3 @@
-from .s3serv import S3Service
+from .S3Service import S3Service
 
 create_builder = S3Service

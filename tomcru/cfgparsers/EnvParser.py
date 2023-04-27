@@ -22,21 +22,22 @@ class EnvParser:
         self.cfgparser = cfgparser
         self.cfg_name = name
 
-    def parse_environments(self):
+    def parse_environments(self, env_envvar=None):
         env_path = os.path.join(self.cfg.app_path, 'envspec')
 
         for root, dirs, files, in os.walk(env_path):
             for base in filter(lambda f: f == 'tomcru.toml', files):
-                envcfg = self.load_env(os.path.join(env_path, root))
+                envcfg = self.load_env(os.path.join(env_path, root), env_envvar=env_envvar)
                 envcfg.app_path = self.cfg.app_path
 
-                self.proj.envs[envcfg.env_id] = envcfg
+                self.proj.envcfgs[envcfg.env_id] = envcfg
 
-    def load_env(self, basepath) -> TomcruEnvCfg:
+    def load_env(self, basepath, env_envvar=None) -> TomcruEnvCfg:
         id = os.path.basename(basepath)
 
         cfg = toml.load(os.path.join(basepath, 'tomcru.toml'))
         envcfg = TomcruEnvCfg(id, cfg)
+        envcfg.global_envvars = {}
 
         for root, dirs, files in os.walk(basepath):
             root_dirname = os.path.basename(root)
@@ -48,6 +49,8 @@ class EnvParser:
 
                     if 'lambdas' in envvars_wrap:
                         envvar_groups = unflatten_1lv(flatten(envvars_wrap['lambdas'], separator='/'))
+
+                        envcfg.global_envvars.update(envvar_groups.pop('__ALL__', {}))
 
                         for lambda_id, envvars in envvar_groups.items():
                             envcfg.envvars_lamb[lambda_id].update(envvars)
@@ -67,52 +70,17 @@ class EnvParser:
                         if ext == '.toml':
                             envcfg.serv_opts[serv] = SettingWrapper({})
 
+        # update envvars with global envvars
+        if env_envvar:
+            envcfg.global_envvars[env_envvar] = envcfg.env_id
+
         return envcfg
-
-    # def parse_envvars(self, vendor):
-    #     """
-    #     Parses lambda and other envvars configured
-    #     :return:
-    #     """
-    #
-    #     path = f'{self.cfg.app_path}/cfg/{vendor}'
-    #
-    #     for env in os.listdir(path):
-    #         envvar_path = os.path.join(path, env, 'envvars')
-    #
-    #         if os.path.exists(envvar_path):
-    #             for root, dirs, files in os.walk(envvar_path):
-    #                 for file in files:
-    #                     if file.endswith('.ini'):
-    #                         # envvar file
-    #                         self.add_envvars(os.path.join(envvar_path, file), env, vendor)
-
-    # def _get_param(self, integ_opts, param, default_val) -> str:
-    #     r = next(filter(lambda x: x.startswith(param+':'), integ_opts), "").removeprefix(param+':')
-    #
-    #     if not r:
-    #         # see if api config contains
-    #         r = default_val
-    #
-    #     return r
 
     def add_envvars(self, file_path, env, vendor):
         raise NotImplementedError()
-    #     """
-    #     Adds enviornment variables ini file defined for:
-    #     - lambda
-    #
-    #     :param file_path: ini filepath
-    #     :param env: environment to configure envvars for
-    #     :param vendor: cloud vendor (aws | azure | gpc)
-    #     :return:
-    #     """
-    #     if not os.path.isabs(file_path):
-    #         file_path = os.path.join(self.cfg.app_path, 'cfg', vendor, env, 'envvars', file_path)
-    #
-    #     if not os.path.exists(file_path):
-    #         raise Exception(f"Define your envvars in the following directory structure: project/cfg/{vendor}/<env>/envvars/<filename>.ini")
-    #
-    #     self.cfg.envs[env].update(
-    #         dict(load_settings(file_path).conf)
-    #     )
+
+    def add_global_envvars(self, env_id, envvars: dict):
+        envcfg = self.proj.envcfgs[env_id]
+
+        for lambda_id, d in envcfg.envvars_lamb.items():
+            d.update(envvars)

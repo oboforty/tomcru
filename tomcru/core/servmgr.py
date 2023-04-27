@@ -11,19 +11,8 @@ class ServiceManager:
         self.p = p
         self.objmgr = objmgr
 
-    def init_services(self, env):
-        # todo: itt: services are already foumd, just iterate over them?
-
-        # ws and http eme builders register their app objects to a common obj_store item
-        for serv_id in self.configured_services(env):
-            service = self.service(env, serv_id)
-
-            if hasattr(service, 'init'):
-                # todo: debug
-                print(f"Initializing service {serv_id}[ENV={env.env}]")
-                service.init()
-            else:
-                print(f"Skipping init on {serv_id}[ENV={env.env}]")
+    def load_services(self, env):
+        return list(map(lambda serv_id: self.service(env, serv_id), self.configured_services(env)))
 
     def service(self, env: TomcruEnvCfg, serv_id):
         if serv_id == 'obj_store_b' or serv_id == 'obj_store':

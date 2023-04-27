@@ -5,6 +5,8 @@ from tomcru.services.ServiceBase import ServiceBase
 
 
 class ApiGWMgr(ServiceBase):
+    INIT_PRIORITY = 1
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

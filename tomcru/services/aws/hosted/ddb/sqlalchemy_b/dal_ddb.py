@@ -8,11 +8,19 @@ from .SqlAlchemyJSONType import JSON_GEN
 
 
 def build_database(app_path, dsn: str, dalcfg: dict):
-    fileloc = dalcfg.pop('__fileloc__', None)
     should_build_database = False
 
     if dsn.startswith('sqlite://'):
-        should_build_database = not os.path.exists(dsn.split('///')[1])
+        if not dsn.startswith('sqlite:///'):
+            raise Exception("Please specify sqlite:// DSN with 3 dashes!")
+
+        db_file_path = dsn.split(':///')[1]
+        if not os.path.isabs(db_file_path):
+            # guarantee that db is created in app path
+            db_file_path = os.path.join(app_path, db_file_path)
+            dsn = 'sqlite:///' + db_file_path
+
+        should_build_database = not os.path.exists(db_file_path)
         connect_args = {'check_same_thread': False}
     elif dsn.startswith('postgresql://'):
         connect_args = {}

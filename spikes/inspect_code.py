@@ -3,17 +3,17 @@ import sys
 import ast
 from collections import defaultdict
 
-from thecode import edes_faszom
+from thecode import func
 # class ObjType:
 #     def __init__(self):
 #         self.kekeke: float = 123
 #faszkivan = 53
 
-params = inspect.get_annotations(edes_faszom)
-_src = inspect.getsource(edes_faszom)
+params = inspect.get_annotations(func)
+_src = inspect.getsource(func)
 cv_root = ast.parse(_src)
-#p = inspect.getsource(edes_faszom)
-#cv = inspect.getclosurev ars(edes_faszom)
+#p = inspect.getsource(func)
+#cv = inspect.getclosurev ars(func)
 
 event_param_name = list(params.keys())[0]
 

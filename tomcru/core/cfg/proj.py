@@ -57,6 +57,7 @@ class TomcruEnvCfg:
         self.service_type: str = cfg['envcfg'].get('service_type', 'faas')
 
         # environment variables for various services
+        self.global_envvars: dict[str, str] = {}
         self.envvars_lamb: dict[str, dict[str, dict]] = defaultdict(dict)
 
         # service specifications
