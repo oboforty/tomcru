@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from tomcru import TomcruProject, TomcruApiDescriptor, TomcruLambdaIntegrationDescription, TomcruApiLambdaAuthorizerDescriptor, TomcruSwaggerIntegrationDescription
+from tomcru import TomcruProject, TomcruApiEP, TomcruLambdaIntegrationEP, TomcruApiLambdaAuthorizerEP, TomcruSwaggerIntegrationEP
 
 
 class Eme2Swagger:
@@ -10,7 +10,7 @@ class Eme2Swagger:
         self.cfg = project.cfg
         self.opts = opts
 
-    def convert_to_swagger(self, api: TomcruApiDescriptor):
+    def convert_to_swagger(self, api: TomcruApiEP):
         paths = defaultdict(dict)
 
         # define authorizers used by this api, based on the lambda integrations
@@ -56,7 +56,7 @@ class Eme2Swagger:
         if endpoint.auth:
             authorizers_discovered.add(endpoint.auth)
 
-        if isinstance(endpoint, TomcruLambdaIntegrationDescription):
+        if isinstance(endpoint, TomcruLambdaIntegrationEP):
             return {
                 'x-lambda': {
                     'lambda-id': endpoint.lambda_id,
@@ -65,7 +65,7 @@ class Eme2Swagger:
                     'auth': endpoint.auth
                 }
             }
-        elif isinstance(endpoint, TomcruSwaggerIntegrationDescription):
+        elif isinstance(endpoint, TomcruSwaggerIntegrationEP):
             return {}
         else:
             raise NotImplementedError(str(endpoint))

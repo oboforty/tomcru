@@ -1,4 +1,4 @@
-from tomcru import TomcruApiDescriptor, TomcruProject, TomcruRouteDescriptor, TomcruLambdaIntegrationDescription
+from tomcru import TomcruApiEP, TomcruProject, TomcruRouteEP, TomcruLambdaIntegrationEP
 
 from .apps.EmeWsApp import EmeWsApp
 
@@ -18,7 +18,7 @@ class WsAppBuilder(ApiGwBuilderCore):
     def init(self):
         pass
 
-    def build_api(self, api_name, api: TomcruApiDescriptor, env: str):
+    def build_api(self, api_name, api: TomcruApiEP, env: str):
         self.env = env
 
         # build eme app object
@@ -37,10 +37,10 @@ class WsAppBuilder(ApiGwBuilderCore):
         _connect_authorizer = None
 
         # find base authorizer (for connect)
-        ro: TomcruRouteDescriptor
+        ro: TomcruRouteEP
         for route, ro in api.routes.items():
 
-            endpoint: TomcruLambdaIntegrationDescription
+            endpoint: TomcruLambdaIntegrationEP
             for endpoint in ro.endpoints:
                 if endpoint.route == "$connect":
                     _connect_authorizer = self.authorizers[endpoint.auth] if endpoint.auth else api.default_authorizer
@@ -52,14 +52,14 @@ class WsAppBuilder(ApiGwBuilderCore):
         _integ_authorizer = WsEnRouteCachedAuthorizer(_connect_authorizer)
 
         # write endpoints to lambda + integrations
-        ro: TomcruRouteDescriptor
+        ro: TomcruRouteEP
         for route, ro in api.routes.items():
 
-            endpoint: TomcruLambdaIntegrationDescription
+            endpoint: TomcruLambdaIntegrationEP
             for endpoint in ro.endpoints:
                 # if endpoint.route == "$connect":
 
-                if isinstance(endpoint, TomcruLambdaIntegrationDescription):
+                if isinstance(endpoint, TomcruLambdaIntegrationEP):
                     # build lambda integration
                     _integration = LambdaIntegration(self.app, endpoint, _integ_authorizer, self.p.serv('aws:onpremise:lambda_b'), env=self.env)
                 else:

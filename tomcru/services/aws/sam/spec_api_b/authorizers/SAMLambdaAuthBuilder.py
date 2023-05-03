@@ -1,4 +1,4 @@
-from tomcru import TomcruApiLambdaAuthorizerDescriptor
+from tomcru import TomcruApiLambdaAuthorizerEP
 from core.utils.yaml_custom import Ref, Join
 
 
@@ -8,7 +8,7 @@ class SAMLambdaAuthBuilder:
         self.lambda_builder = lambda_builder
         self.external_authorizers = external_authorizers
 
-    def build(self, auth_id, auth: TomcruApiLambdaAuthorizerDescriptor, apiopts):
+    def build(self, auth_id, auth: TomcruApiLambdaAuthorizerEP, apiopts):
         role_id = self.param_builder.store('LambdaAccessRole', apiopts['access_role'])
 
         auth_integ = {

@@ -1,4 +1,4 @@
-from tomcru import TomcruRouteDescriptor, TomcruLambdaIntegrationDescription
+from tomcru import TomcruRouteEP, TomcruLambdaIntegrationEP
 from core.utils.yaml_custom import GetAtt, Ref
 
 
@@ -7,7 +7,7 @@ class SAMLambdaBuilder:
         self.param_builder = param_builder
         self.lambda_builder = lambda_builder
 
-    def build(self, integ_cfg: TomcruLambdaIntegrationDescription):
+    def build(self, integ_cfg: TomcruLambdaIntegrationEP):
         integ = {
             'type': "aws_proxy",
             'httpMethod': "POST",

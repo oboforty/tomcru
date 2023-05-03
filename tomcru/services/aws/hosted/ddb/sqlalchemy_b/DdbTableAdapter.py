@@ -6,13 +6,16 @@ from sqlalchemy import text
 
 
 class DdbTableAdapter:
-    def __init__(self, sess, ent_obj, autocommit=True):
-        self.T = ent_obj
+    def __init__(self, sess, mapped_model, tabledef, autocommit=True):
+        self.T = mapped_model
+        self.TableDef = tabledef
         self.session = sess
-        self.table_name = self.T.__tablename__
 
-        self.partition_key = ent_obj.partition_key
-        self.sort_key = ent_obj.sort_key
+        self.table_name = self.TableDef.fullname
+        self.partition_key = self.TableDef.primary_key.columns[0].name
+        self.sort_key = None
+        # todo: support sort_key!
+
         self._autocommit = autocommit
 
     def _get_ent(self, Key):
@@ -38,10 +41,24 @@ class DdbTableAdapter:
 
     def put_item(self, Item, **kwargs):
         # check if already exists
-        ent = self._get_ent(self._get_key(Item))
+        key = self._get_key(Item)
+        ent = self._get_ent(key)
 
         if not ent:
-            ent = self.T(**Item)
+            ent = self.T()
+
+            setattr(ent, self.partition_key, key[self.partition_key])
+            if self.sort_key:
+                setattr(ent, self.sort_key, key[self.sort_key])
+
+            setattr(ent, 'ddb_content', Item.copy())
+            #         for k,v in kwargs.items():
+            #             setattr(self, k, v)
+            #
+            #         self.ddb_content = kwargs.copy()
+
+            print(1)
+            #ent = self.T(**Item)
         else:
             ent.ddb_content = Item
 

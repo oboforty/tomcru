@@ -1,5 +1,4 @@
 import os
-from deprecated import deprecated
 
 from .obj_store import ObjStore
 from .servmgr import ServiceManager
@@ -66,30 +65,30 @@ class TomcruProject:
             self.envs[env_id] = _env
 
         return _env
-
-    @deprecated("Don't call services from the project, instead use environment")
-    def serv(self, name):
-        env = self.find_env_from_legacy_name(name)
-
-        # load service into cache; cfg
-        return self.env(env.env_id).serv(name)
-
-    @deprecated("Don't call services from the project, instead use environment")
-    def find_env_from_legacy_name(self, name) -> TomcruEnvCfg:
-        n = name.split(':')
-        vendor, target, service_id = n
-        if not target:
-            target = ''
-        if not vendor:
-            vendor = 'general'
-
-        if target == 'onpremise':
-            # @note: hosted frameworks were incorrectly labeled as onpremise
-            target = 'hosted'
-
-        env: TomcruEnvCfg = next(filter(lambda env: env.target == target and vendor in env.vendors, self.envcfgs.values()), None)
-
-        if env is None:
-            raise Exception(f"Service not found: {name}")
-
-        return env
+    #
+    # @deprecated("Don't call services from the project, instead use environment")
+    # def serv(self, name):
+    #     env = self.find_env_from_legacy_name(name)
+    #
+    #     # load service into cache; cfg
+    #     return self.env(env.env_id).serv(name)
+    #
+    # @deprecated("Don't call services from the project, instead use environment")
+    # def find_env_from_legacy_name(self, name) -> TomcruEnvCfg:
+    #     n = name.split(':')
+    #     vendor, target, service_id = n
+    #     if not target:
+    #         target = ''
+    #     if not vendor:
+    #         vendor = 'general'
+    #
+    #     if target == 'onpremise':
+    #         # @note: hosted frameworks were incorrectly labeled as onpremise
+    #         target = 'hosted'
+    #
+    #     env: TomcruEnvCfg = next(filter(lambda env: env.target == target and vendor in env.vendors, self.envcfgs.values()), None)
+    #
+    #     if env is None:
+    #         raise Exception(f"Service not found: {name}")
+    #
+    #     return env

@@ -11,6 +11,7 @@ class InjectableAppBase:
         self.inited = False
 
     def __enter__(self):
+        import traceback
         if not self.inited:
             self.p.srvmgr.load_services(self.env)
 
@@ -19,6 +20,8 @@ class InjectableAppBase:
                 service.inject_dependencies()
 
         if not self.inited:
+            self.inited = True
+
             for serv_id, service in sorted(self.p.srvmgr, key=lambda s: s[1].INIT_PRIORITY):
                 if hasattr(service, 'init'):
                     # todo: debug
@@ -26,7 +29,6 @@ class InjectableAppBase:
                     service.init()
                 else:
                     print(f"Skipping init on {serv_id}[ENV={self.env.env}]")
-            self.inited = True
 
         return self
 
@@ -42,3 +44,6 @@ class InjectableAppBase:
 
     def object(self, srv, obj_id):
         return self.p.objmgr.get(srv, obj_id)
+
+    def __repr__(self):
+        return f'<InjectableAppBase env={self.env.env_id} target={self.env.target} service_type={self.env.service_type} path={self.env.app_path}>'

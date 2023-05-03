@@ -14,7 +14,7 @@ class EmeWsAppIntegrator:
 
         return self.app
 
-    def add_method(self, endpoint: TomcruEndpointDescriptor):
+    def add_method(self, endpoint: TomcruEndpoint):
         """
         Adds method to EME/Flask app
         :param endpoint: endpoint url to hook to
@@ -45,7 +45,7 @@ class EmeWsAppIntegrator:
     def post_to_conn(self, **kwargs):
         raise NotImplementedError()
 
-    def get_called_endpoint(self, msid, user, client, token, data, route, **kwargs) -> TomcruEndpointDescriptor:
+    def get_called_endpoint(self, msid, user, client, token, data, route, **kwargs) -> TomcruEndpoint:
 
         return route
 

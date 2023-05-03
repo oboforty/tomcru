@@ -1,8 +1,8 @@
 from flask import request, Response, jsonify
 
-from services.aws.hosted.apigw.api_shared.integration import TomcruApiGWHttpIntegration, \
+from tomcru.services.aws.hosted.apigw.api_shared.integration import TomcruApiGWHttpIntegration, \
     LambdaAuthorizerIntegration
-from tomcru import TomcruApiDescriptor, TomcruLambdaIntegrationDescription, TomcruEndpointDescriptor
+from tomcru import TomcruApiEP, TomcruLambdaIntegrationEP, TomcruEndpoint
 
 
 base_headers = {
@@ -12,7 +12,7 @@ base_headers = {
 
 class LambdaIntegration(TomcruApiGWHttpIntegration):
 
-    def __init__(self, endpoint: TomcruLambdaIntegrationDescription, auth: LambdaAuthorizerIntegration, lambda_builder, env=None):
+    def __init__(self, endpoint: TomcruLambdaIntegrationEP, auth: LambdaAuthorizerIntegration, lambda_builder, env=None):
         self.endpoint = endpoint
         self.auth_integ = auth
         self.lambda_builder = lambda_builder
@@ -46,7 +46,7 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
                     "routeKey": route_key
                 },
             },
-            'body': request.data,
+            'body': request.data.decode('utf8'),
             'queryStringParameters': dict(request.args),
             'headers': dict((k.lower(), v) for k, v in request.headers.items()),
             'pathParameters': dict(request.view_args) | kwargs
@@ -71,7 +71,8 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
                 args_from = next(iter(id_from.split('.')[1:]))
                 args_to = next(iter(id_to.split('.')[1:]))
 
-                src_to[args_to] = src_from[args_from]
+                if args_from in src_from:
+                    src_to[args_to] = src_from[args_from]
 
         return event
 

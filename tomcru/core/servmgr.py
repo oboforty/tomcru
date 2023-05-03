@@ -37,12 +37,12 @@ class ServiceManager:
             # load service config
             search_path = os.path.join(pck_path, 'services', env.vendors[0], *target)
 
-            try:
-                srv_builder = load_serv(search_path, module_name, debug=self.p.debug)
-            except ModuleNotFoundError:
-                raise Exception(f"Service not found: {module_name}")
-            # if self.debug_builders:
-            #     print(name, '->', builder_cfg_file)
+            # try:
+            srv_builder = load_serv(search_path, module_name, debug=self.p.debug)
+                # print("        OKOK", module_name, search_path)
+            # except ModuleNotFoundError:
+            #     print("        NOK", module_name, search_path)
+            #    raise Exception("Service not found: " + module_name)
 
             # some services can have zero config
             serv_opts.conf['__fileloc__'] = os.path.dirname(search_path)

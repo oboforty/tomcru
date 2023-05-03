@@ -4,14 +4,14 @@ import time
 from datetime import datetime
 from urllib import parse
 
-from tomcru import TomcruLambdaIntegrationDescription
+from tomcru import TomcruLambdaIntegrationEP
 
 from .TomcruApiGWWsIntegration import TomcruApiGWWsIntegration
 
 
 class LambdaIntegration(TomcruApiGWWsIntegration):
 
-    def __init__(self, wsapp, endpoint: TomcruLambdaIntegrationDescription, auth, lambda_builder, env=None):
+    def __init__(self, wsapp, endpoint: TomcruLambdaIntegrationEP, auth, lambda_builder, env=None):
         self.app = wsapp
         self.endpoint = endpoint
         self.auth_integ = auth

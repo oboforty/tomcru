@@ -1,14 +1,14 @@
 import os.path
 from collections import defaultdict
 
-from .api import TomcruApiAuthorizerDescriptor, TomcruApiDescriptor
+from .api import TomcruApiAuthorizerEP, TomcruApiEP
 from ..utils.toml_custom import SettingWrapper
 
 
 class TomcruProjectCfg:
     def __init__(self):
-        self.apis: dict[str, TomcruApiDescriptor] = {}
-        self.authorizers: dict[str, TomcruApiAuthorizerDescriptor] = {}
+        self.apis: dict[str, TomcruApiEP] = {}
+        self.authorizers: dict[str, TomcruApiAuthorizerEP] = {}
 
         self.layers = []
         self.services: dict[str, SettingWrapper] = {}
@@ -19,7 +19,7 @@ class TomcruProjectCfg:
         self.layers.extend(cfg.layers)
 
         # additive merge, not override
-        api: TomcruApiDescriptor
+        api: TomcruApiEP
         for api_name, api in cfg.apis.items():
             if api_name in self.apis:
                 self.apis[api_name].update(api)

@@ -4,11 +4,11 @@ from types import SimpleNamespace
 from typing import Dict
 
 
-from tomcru import TomcruSubProjectCfg, TomcruApiDescriptor
+from tomcru import TomcruSubProjectCfg, TomcruApiEP
 
 
 class EmeWsApp(WebsocketApp):
-    def __init__(self, wsappcfg: TomcruApiDescriptor, cfg: dict):
+    def __init__(self, wsappcfg: TomcruApiEP, cfg: dict):
         self.debug = True
         self.api_name = wsappcfg.api_name
         self.api_type = 'ws'

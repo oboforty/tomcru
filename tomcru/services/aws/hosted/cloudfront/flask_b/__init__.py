@@ -1,0 +1,3 @@
+from .CloudfrontFlaskBuilder import CloudfrontFlaskBuilder
+
+create_builder = CloudfrontFlaskBuilder

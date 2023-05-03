@@ -46,11 +46,10 @@ class EnvParser:
                 # load envvars
                 for file in files:
                     envvars_wrap = toml.load(os.path.join(root, file))
+                    envcfg.global_envvars.update(envvars_wrap.pop('__ALL__', {}))
 
                     if 'lambdas' in envvars_wrap:
                         envvar_groups = unflatten_1lv(flatten(envvars_wrap['lambdas'], separator='/'))
-
-                        envcfg.global_envvars.update(envvar_groups.pop('__ALL__', {}))
 
                         for lambda_id, envvars in envvar_groups.items():
                             envcfg.envvars_lamb[lambda_id].update(envvars)

@@ -1,12 +1,12 @@
 from collections import defaultdict
 from typing import List, Dict, Set
 
-from .authorizers import TomcruApiAuthorizerDescriptor
-from .integrations import TomcruEndpointDescriptor
+from .authorizers import TomcruApiAuthorizerEP
+from .integrations import TomcruEndpoint
 
 
 
-class TomcruApiDescriptor:
+class TomcruApiEP:
     def __init__(self, api_name, api_type):
         """
 
@@ -18,7 +18,7 @@ class TomcruApiDescriptor:
 
         # Api configuration:
         self.enabled = True
-        self.routes: Dict[str, TomcruRouteDescriptor] = {}
+        self.routes: Dict[str, TomcruRouteEP] = {}
         #self.authorizers: Set[str] = set()
 
         # OpenApi spec dict
@@ -34,7 +34,7 @@ class TomcruApiDescriptor:
         self.default_role = None
         self.default_layers = []
 
-    def update(self, api: 'TomcruApiDescriptor'):
+    def update(self, api: 'TomcruApiEP'):
         if api.enabled is not None:
             self.enabled = api.enabled
 
@@ -54,7 +54,7 @@ class TomcruApiDescriptor:
         print('@TODO: merge self.default_layers = api.default_layers')
 
         # additive merge, not override
-        route: TomcruRouteDescriptor
+        route: TomcruRouteEP
         for route_uri, route in api.routes.items():
             if route_uri in self.routes:
                 self.routes[route_uri].update(route)
@@ -65,9 +65,9 @@ class TomcruApiDescriptor:
         return f'<{self.__class__.__name__} {self.api_type.upper()} - {self.api_name}>'
 
 
-class TomcruRouteDescriptor:
+class TomcruRouteEP:
 
-    def __init__(self, route, group, api_name):
+    def __init__(self, route, api_name):
         """
 
         :param route:
@@ -75,18 +75,15 @@ class TomcruRouteDescriptor:
         :param api_name:
         """
         self.api_name = api_name
-        self.group = group
         self.route = route
-        self.endpoints: List[TomcruEndpointDescriptor] = []
+        self.endpoints: List[TomcruEndpoint] = []
 
     def add_endpoint(self, ep):
         self.endpoints.append(ep)
 
-    def update(self, route: 'TomcruRouteDescriptor'):
+    def update(self, route: 'TomcruRouteEP'):
         if self.api_name != route.api_name:
             raise f"Route api name mismatch in update(): {self.api_name} != {route.api_name}"
-        if self.group != route.group:
-            raise f"Route group mismatch in update(): {self.group} != {route.group}"
         if self.route != route.route:
             raise f"Route route mismatch in update(): {self.route} != {route.route}"
 

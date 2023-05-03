@@ -1,9 +1,9 @@
 import os
 
 
-class TomcruEndpointDescriptor:
+class TomcruEndpoint:
 
-    def __init__(self, group, route, method, auth=None, opts=None):
+    def __init__(self, route, method, auth=None, opts=None):
         """
 
         :param group:
@@ -12,7 +12,6 @@ class TomcruEndpointDescriptor:
         """
         self.route: str = route
         self.method: str = method
-        self.group = group
         self.auth = auth
         self.integ_opts = opts if opts is not None else {}
 
@@ -36,12 +35,12 @@ class TomcruEndpointDescriptor:
     @property
     def endpoint_id(self):
         # eme-like endpoint id (group & method name from lambda)
-        return f'{self.group}:{self.method.lower()}_{self.integ_id}'
+        return f'{self.route}:{self.method.lower()}_{self.integ_id}'
 
     @staticmethod
-    def get_endpoint_id(group, method, integ_id):
-        # eme-like endpoint id (group & method name from lambda)
-        return f'{group}:{method.lower()}_{integ_id}'
+    def get_endpoint_id(route, method, integ_id):
+        # eme-like endpoint id (route & method name from lambda)
+        return f'{route}:{method.lower()}_{integ_id}'
 
     @property
     def is_http(self):
@@ -55,28 +54,30 @@ class TomcruEndpointDescriptor:
     def _tomcru_json_serializer(self):
         return self.endpoint_id
 
-class TomcruLambdaIntegrationDescription(TomcruEndpointDescriptor):
 
-    def __init__(self, group, route, method, lamb_name, layers, role, auth, opts):
+class TomcruLambdaIntegrationEP(TomcruEndpoint):
+
+    def __init__(self, route, method, group, lamb_name, layers, role, auth, opts):
         """
 
-        :param group:
         :param route:
         :param method:
-        :param lamb_name:
-        :param layers:
-        :param role:
-        :param auth:
+        :param group: lambda group (parent directory)
+        :param lamb_name: lambda name (lambda's directory name)
+        :param layers: lambda layers attached
+        :param role: execution role
+        :param auth: authorizer attached
         """
-        super().__init__(group, route, method, auth, opts)
+        super().__init__(route, method, auth, opts)
 
+        self.group = group
         self.lamb = lamb_name
         self.layers = layers
         self.role = role
 
     @property
     def integ_id(self):
-        return self.lamb
+        return self.lambda_id
 
     @property
     def method_name(self):
@@ -92,16 +93,15 @@ class TomcruLambdaIntegrationDescription(TomcruEndpointDescriptor):
         yield self.role
 
 
-class TomcruSwaggerIntegrationDescription(TomcruEndpointDescriptor):
-    def __init__(self, group, route, method, type):
+class TomcruSwaggerIntegrationEP(TomcruEndpoint):
+    def __init__(self, route, method, type):
         """
 
-        :param group:
         :param route:
         :param method:
         :param type:
         """
-        super().__init__(group, route, method, None)
+        super().__init__(route, method, None)
 
         self.type = type
         if self.type == 'spec':
@@ -121,22 +121,24 @@ class TomcruSwaggerIntegrationDescription(TomcruEndpointDescriptor):
         return f'{self.method.lower()}_{self.integ_id}'
 
 
-class TomcruMockedIntegrationDescription(TomcruEndpointDescriptor):
-    def __init__(self, group, route, method, filename):
+class TomcruMockedIntegrationEP(TomcruEndpoint):
+    def __init__(self, route, method, operationId, file, example):
         """
 
-        :param group:
         :param route:
         :param method:
-        :param filename:
+        :param resp:
         """
-        super().__init__(group, route, method, None)
+        super().__init__(route, method, None)
 
-        self.filename = filename
+        self.file = file
+        self.exmple = example
+        self.source = 'file' if file else 'example'
+        self.operationId = operationId
 
     @property
     def integ_id(self):
-        return os.path.basename(self.filename)
+        return os.path.basename(self.operationId)
 
     @property
     def method_name(self):

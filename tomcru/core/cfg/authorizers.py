@@ -1,7 +1,7 @@
 
 
 
-class TomcruApiAuthorizerDescriptor:
+class TomcruApiAuthorizerEP:
     def __init__(self, auth_id, auth_type, integ_id):
         """
         Describes authorizer for an API
@@ -14,7 +14,7 @@ class TomcruApiAuthorizerDescriptor:
         self.integ_id = integ_id
 
 
-class TomcruApiLambdaAuthorizerDescriptor(TomcruApiAuthorizerDescriptor):
+class TomcruApiLambdaAuthorizerEP(TomcruApiAuthorizerEP):
     def __init__(self, auth_id, lambda_id, lambda_source, src_in = None, src_name = None):
         """
 
@@ -31,7 +31,7 @@ class TomcruApiLambdaAuthorizerDescriptor(TomcruApiAuthorizerDescriptor):
         return self.lambda_source+'/'+self.integ_id
 
 
-class TomcruApiOIDCAuthorizerDescriptor(TomcruApiAuthorizerDescriptor):
+class TomcruApiOIDCAuthorizerEP(TomcruApiAuthorizerEP):
     def __init__(self, auth_id, endpoint, audience, scopes):
         """
 

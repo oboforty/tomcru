@@ -1,11 +1,11 @@
-from tomcru import TomcruApiOIDCAuthorizerDescriptor
+from tomcru import TomcruApiOIDCAuthorizerEP
 
 
 class SAMOIDCAuthBuilder:
     def __init__(self, param_builder):
         self.param_builder = param_builder
 
-    def build(self, auth_id, auth: TomcruApiOIDCAuthorizerDescriptor, apiopts):
+    def build(self, auth_id, auth: TomcruApiOIDCAuthorizerEP, apiopts):
         auth_integ = {
             'type': 'jwt',
             # Authorization header is staticly set for OIDC

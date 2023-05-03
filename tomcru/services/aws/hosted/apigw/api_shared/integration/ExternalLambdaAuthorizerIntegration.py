@@ -2,11 +2,11 @@ import json
 import os
 
 from .TomcruApiGWHttpIntegration import TomcruApiGWAuthorizerIntegration
-from tomcru import TomcruApiLambdaAuthorizerDescriptor
+from tomcru import TomcruApiLambdaAuthorizerEP
 
 
 class ExternalLambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
-    def __init__(self, cfg: TomcruApiLambdaAuthorizerDescriptor, apigw_cfg: dict):
+    def __init__(self, cfg: TomcruApiLambdaAuthorizerEP, apigw_cfg: dict):
         super().__init__(cfg)
         self.cfg = cfg
 

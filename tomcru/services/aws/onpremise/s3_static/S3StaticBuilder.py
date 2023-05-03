@@ -5,7 +5,7 @@ import subprocess
 import json
 
 import eme.static, eme.entities
-from tomcru import TomcruApiDescriptor, TomcruProject
+from tomcru import TomcruApiEP, TomcruProject
 
 
 class S3StaticBuilder:

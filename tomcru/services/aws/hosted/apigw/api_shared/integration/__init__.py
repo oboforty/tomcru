@@ -1,5 +1,6 @@
 
 from .ExternalLambdaAuthorizerIntegration import ExternalLambdaAuthorizerIntegration
-from .TomcruApiGWHttpIntegration import TomcruApiGWHttpIntegration
+from .TomcruApiGWHttpIntegration import TomcruApiGWHttpIntegration, TomcruApiGWAuthorizerIntegration
 from .LambdaAuthorizerIntegration import LambdaAuthorizerIntegration
 from .OIDCAuthorizerIntegration import OIDCAuthorizerIntegration
+

@@ -21,6 +21,7 @@ class S3AdapterLocal:
             if not os.path.exists(bucket_cfg['path']):
                 print("S3AdapterLocal: creating bucket directory:", bucket_cfg['path'])
                 os.makedirs(bucket_cfg['path'])
+
     def _get_path(self, Bucket, Key):
         return os.path.join(self.buckets[Bucket]['path'], Key)
 
@@ -50,11 +51,12 @@ class S3AdapterLocal:
         _path = self.buckets[Bucket]['path']
 
         if isinstance(Body, bytes):
-            print("kuki")
+            raise NotImplementedError()
         else:
             with open(_path, 'b') as fh:
                 shutil.copyfileobj(Body, fh)
                 #fh.write(Body.read())
+
 
     def download_file(self, Bucket, Key, Filename, ExtraArgs=None, Callback=None, Config=None):
         from_path = self._get_path(Bucket, Key)

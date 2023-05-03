@@ -2,10 +2,9 @@ import os.path
 
 from abc import ABCMeta, abstractmethod
 
-from services.aws.hosted.apigw.api_shared.integration import TomcruApiGWHttpIntegration
 from tomcru.services.ServiceBase import ServiceBase
-from tomcru import TomcruApiDescriptor, TomcruEndpointDescriptor, TomcruRouteDescriptor, TomcruLambdaIntegrationDescription, TomcruSwaggerIntegrationDescription, TomcruMockedIntegrationDescription
-
+from tomcru import TomcruApiEP, TomcruEndpoint, TomcruRouteEP, TomcruSwaggerIntegrationEP, TomcruApiLambdaAuthorizerEP, TomcruApiOIDCAuthorizerEP
+from .integration import TomcruApiGWHttpIntegration, TomcruApiGWAuthorizerIntegration, LambdaAuthorizerIntegration, ExternalLambdaAuthorizerIntegration, OIDCAuthorizerIntegration
 
 __dir__ = os.path.dirname(os.path.realpath(__file__))
 
@@ -16,45 +15,94 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
         super().__init__(*args, **kwargs)
 
         self.authorizers: dict[str, str] = {}
-        self.integrations: dict[TomcruEndpointDescriptor, TomcruApiGWHttpIntegration] = {}
+        self.integrations: dict[TomcruEndpoint, TomcruApiGWHttpIntegration] = {}
         self.port2app: dict[int, str] = {}
 
         self.apps: dict[str, object] = {}
 
-    def init(self):
+    def get_app(self, api_name):
+        if api_name not in self.apps:
 
+            raise Exception(f"Api {api_name} not found! Available apis: {', '.join(self.apps.keys())}")
+        return self.apps[api_name], self.opts.get(f'apis.{api_name}', {})
+
+    def inject_dependencies(self):
+        # inject deps is called before init, first create all app objects
+        # so that apps with attach_to can be injected into already existing ones in init
+
+        for api_name, api in self.p.cfg.apis.items():
+            apiopts = { **self.opts.get('default', {}), **self.opts.get(f'apis.{api_name}', {}) }
+
+            if 'attach_to' in apiopts:
+                # skip building api if it's configured to be attached to another app+port
+                continue
+
+            self.apps[api.api_name] = self.create_app(api, apiopts)
+
+    def init(self):
         # build apis here
         for api_name, api in self.p.cfg.apis.items():
             apiopts = { **self.opts.get('default', {}), **self.opts.get(f'apis.{api_name}', {}) }
 
-            self.apps[api.api_name] = self.create_app(api, apiopts)
+            if 'attach_to' in apiopts:
+                # attach this api to an already existing app
+                serv_id = apiopts['attach_to']['service']
+                api_name = apiopts['attach_to']['app']
 
-            conn_id = api_name
-            self.service('apigw_manager').add_app(self, conn_id)
+                try:
+                    parent_app, parent_opts = self.service(serv_id).get_app(api_name)
+                except:
+                    raise Exception(f"Referenced app not found in attach_to: {serv_id}->{api_name}")
+                self.apps[api.api_name] = parent_app
 
-            self._build_authorizers()
-            index = self._build_integrations(api, apiopts)
+            self._build_app(api, apiopts)
 
-            self.add_extra_route_handlers(api, index)
+    def _build_app(self, api: TomcruApiEP, apiopts: dict):
+        conn_id = api.api_name
+        self.service('apigw_manager').add_app(self, conn_id)
 
-            self.port2app[apiopts['port']] = api_name
+        self._build_authorizers()
+        index = self._build_integrations(api, apiopts)
+
+        self.add_extra_route_handlers(api, index)
+
+        self.port2app[apiopts['port']] = api.api_name
 
     def _build_authorizers(self):
-        #self.p.cfg.authorizers
-        pass
+        authorizers = self.p.cfg.authorizers
+        self.authorizers: dict[str, TomcruApiGWAuthorizerIntegration] = {}
 
-    def _build_integrations(self, api, apiopts) -> TomcruEndpointDescriptor | None:
+        # build authorizers
+        for authorizer_id, auth in authorizers.items():
+            if isinstance(auth, TomcruApiLambdaAuthorizerEP):
+                # evaluate lambda sub type
+                if 'external' == auth.lambda_source:
+                    raise NotImplementedError("__fileloc__?")
+                    self.authorizers[authorizer_id] = ExternalLambdaAuthorizerIntegration(auth, self.opts)
+                else:
+                    self.authorizers[authorizer_id] = LambdaAuthorizerIntegration(auth, self.opts, self.service('lambda'), env=self.env)
+
+            elif isinstance(auth, TomcruApiOIDCAuthorizerEP):
+                self.authorizers[authorizer_id] = OIDCAuthorizerIntegration(auth, self.opts, env=self.env)
+            else:
+                # todo: implement IAM and jwt
+                raise NotImplementedError(authorizer_id)
+
+        return self.authorizers
+
+
+    def _build_integrations(self, api, apiopts) -> TomcruEndpoint | None:
         #swagger_converter = self.service('')
 
         # build controllers
         _index = None
-        _swagger: dict[str, TomcruSwaggerIntegrationDescription | None] = {"json": None, "html": None, "yaml": None}
+        _swagger: dict[str, TomcruSwaggerIntegrationEP | None] = {"json": None, "html": None, "yaml": None}
         api_root = apiopts.get('api_root', '')
 
         # write endpoints to lambda + integrations
-        ro: TomcruRouteDescriptor
+        ro: TomcruRouteEP
         for route, ro in api.routes.items():
-            endpoint: TomcruEndpointDescriptor
+            endpoint: TomcruEndpoint
             for endpoint in ro.endpoints:
                 auth = self.authorizers[endpoint.auth] if endpoint.auth else None
 
@@ -77,14 +125,9 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
 
         return _index
 
-    def get_app(self, api_name):
-        if api_name not in self.apps:
-
-            raise Exception(f"Api {api_name} not found! Available apis: {', '.join(self.apps.keys())}")
-        return self.apps[api_name], self.opts.get(f'apis.{api_name}', {})
-
     def on_request(self, **kwargs):
         ep, api = self.get_called_endpoint(**kwargs)
+
         integ = self.integrations[ep]
 
         response = integ.on_request(**kwargs)
@@ -107,21 +150,21 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
     def parse_response(self, response):
         pass
     @abstractmethod
-    def create_app(self, api: TomcruApiDescriptor, opts: dict):
+    def create_app(self, api: TomcruApiEP, opts: dict):
         return None
 
     @abstractmethod
-    def add_method(self, api: TomcruApiDescriptor, route: TomcruRouteDescriptor, endpoint: TomcruEndpointDescriptor, opts: dict, _integration: TomcruApiGWHttpIntegration):
+    def add_method(self, api: TomcruApiEP, route: TomcruRouteEP, endpoint: TomcruEndpoint, opts: dict, _integration: TomcruApiGWHttpIntegration):
         pass
 
     @abstractmethod
-    def add_extra_route_handlers(self, api: TomcruApiDescriptor, index: TomcruEndpointDescriptor | None = None):
+    def add_extra_route_handlers(self, api: TomcruApiEP, index: TomcruEndpoint | None = None):
         pass
 
     @abstractmethod
-    def get_called_endpoint(self, **kwargs) -> tuple[TomcruEndpointDescriptor, TomcruApiDescriptor]:
+    def get_called_endpoint(self, **kwargs) -> tuple[TomcruEndpoint, TomcruApiEP]:
         pass
 
     @abstractmethod
-    def get_integration(self, api: TomcruApiDescriptor, endpoint: TomcruEndpointDescriptor):
+    def get_integration(self, api: TomcruApiEP, endpoint: TomcruEndpoint):
         pass

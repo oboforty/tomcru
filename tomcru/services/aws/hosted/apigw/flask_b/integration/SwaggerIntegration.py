@@ -2,18 +2,17 @@ import json
 from functools import cache
 from io import StringIO
 
-from core.utils.yaml_custom import yaml
 
 from flask import Response, Flask
 from flask_swagger_ui import get_swaggerui_blueprint
 
-from services.aws.hosted.apigw.api_shared.integration import TomcruApiGWHttpIntegration
-from tomcru import TomcruApiDescriptor, TomcruSwaggerIntegrationDescription
+from tomcru.services.aws.hosted.apigw.api_shared.integration import TomcruApiGWHttpIntegration
+from tomcru import TomcruApiEP, TomcruSwaggerIntegrationEP, utils
 
 
 class SwaggerIntegration(TomcruApiGWHttpIntegration):
 
-    def __init__(self, api: TomcruApiDescriptor, endpoint: TomcruSwaggerIntegrationDescription, swagger_converter, env=None):
+    def __init__(self, api: TomcruApiEP, endpoint: TomcruSwaggerIntegrationEP, swagger_converter, env=None):
         # self.spec = api.spec
         # self.api_name = api.api_name
         self.api = api
@@ -36,7 +35,7 @@ class SwaggerIntegration(TomcruApiGWHttpIntegration):
             return r
 
     @cache
-    def get_swagger_content(self, api: TomcruApiDescriptor, endpoint):
+    def get_swagger_content(self, api: TomcruApiEP, endpoint):
         self.content_type = f'application/{endpoint.req_content}'
 
         if not api.spec:
@@ -47,12 +46,12 @@ class SwaggerIntegration(TomcruApiGWHttpIntegration):
             swagger_content = json.dumps(api.spec)
         else:
             sth = StringIO()
-            yaml.dump(api.spec, stream=sth)
+            utils.yaml.dump(api.spec, stream=sth)
             swagger_content = sth.getvalue()
 
         return swagger_content
 
-def integrate_swagger_ui_blueprint(app: Flask, swagger_endpoint: TomcruSwaggerIntegrationDescription, ui_endpoint: TomcruSwaggerIntegrationDescription):
+def integrate_swagger_ui_blueprint(app: Flask, swagger_endpoint: TomcruSwaggerIntegrationEP, ui_endpoint: TomcruSwaggerIntegrationEP):
     swaggerui_blueprint = get_swaggerui_blueprint(
         ui_endpoint.route,
         swagger_endpoint.route,

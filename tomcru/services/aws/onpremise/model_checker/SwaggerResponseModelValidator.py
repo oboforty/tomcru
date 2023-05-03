@@ -1,7 +1,7 @@
 import os
 import json
 
-from tomcru import TomcruApiDescriptor, TomcruProject, TomcruEndpointDescriptor, TomcruSwaggerIntegrationDescription
+from tomcru import TomcruApiEP, TomcruProject, TomcruEndpoint, TomcruSwaggerIntegrationEP
 
 from flask import Flask, request, jsonify, Response, Request
 
@@ -12,8 +12,8 @@ class SwaggerResponseModelValidator:
         self.cfg = project.cfg
         self.p = project
 
-    def check_response(self, api: TomcruApiDescriptor, ep: TomcruEndpointDescriptor, response: Response, env: str):
-        if isinstance(ep, TomcruSwaggerIntegrationDescription):
+    def check_response(self, api: TomcruApiEP, ep: TomcruEndpoint, response: Response, env: str):
+        if isinstance(ep, TomcruSwaggerIntegrationEP):
             # ignore all swagger endpoints, no need to validate
             return
 

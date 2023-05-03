@@ -20,7 +20,7 @@ class StaticAppBuilder:
         return objs.get(srv, name)
 
     def build_app(self, env):
-        self.p.env = env
+        # self.p.env = env
         builder = self.p.serv(self.api2builder['s3app'])
 
         return builder.build_app(env)

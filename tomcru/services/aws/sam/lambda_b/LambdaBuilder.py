@@ -1,4 +1,4 @@
-from tomcru import TomcruEndpointDescriptor, TomcruProject, TomcruLambdaIntegrationDescription
+from tomcru import TomcruEndpoint, TomcruProject, TomcruLambdaIntegrationEP
 
 
 class LambdaBuilder:

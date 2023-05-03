@@ -3,7 +3,7 @@ import jwt
 import requests
 
 from .TomcruApiGWHttpIntegration import TomcruApiGWAuthorizerIntegration
-from tomcru import TomcruApiOIDCAuthorizerDescriptor
+from tomcru import TomcruApiOIDCAuthorizerEP
 
 class AWSOIDCException(Exception):
     pass
@@ -11,7 +11,7 @@ class AWSOIDCException(Exception):
 
 class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
-    def __init__(self, cfg: TomcruApiOIDCAuthorizerDescriptor, auth_cfg, env=None):
+    def __init__(self, cfg: TomcruApiOIDCAuthorizerEP, auth_cfg, env=None):
         super().__init__(cfg)
         self.env = env
 
@@ -81,6 +81,7 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         except requests.exceptions.ConnectionError:
             raise AWSOIDCException()
 
+        # TODO: ITT: how to refer to localhost instead of pythonanywhere?
         if r.status_code != 200:
             raise AWSOIDCException()
         oidc = r.json()

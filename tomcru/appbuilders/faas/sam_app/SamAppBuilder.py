@@ -15,7 +15,7 @@ class SamAppBuilder:
         self.param_builder = project.serv('aws:sam:params_b')
 
     def build_app(self, env):
-        self.p.env = env
+        # self.p.env = env
         lambda_builder = self.p.serv('aws:sam:lambda_b')
 
         sam_tpl: dict = self.build_app_stack(env)
@@ -61,7 +61,7 @@ class SamAppBuilder:
             'AWSTemplateFormatVersion': '2010-09-09',
             'Transform': 'AWS::Serverless-2016-10-31',
             # todo: add custom description
-            'Description': 'Serverless website',
+            'EP': 'Serverless website',
             'Parameters': {},
             'Globals': {},
             'Resources': {}
@@ -73,7 +73,7 @@ class SamAppBuilder:
         return tpl
 
     def _sort_keys_tpl(self, tpl):
-        SAM_KEYS_ORDER = ['AWSTemplateFormatVersion', 'Transform', 'Description', 'Parameters', 'Globals', 'Resources']
+        SAM_KEYS_ORDER = ['AWSTemplateFormatVersion', 'Transform', 'EP', 'Parameters', 'Globals', 'Resources']
         # RES_KEYS_ORDER = ['Type', 'Parameters']
         #
         tpl = {k: tpl[k] for k in sorted(tpl, key=lambda x: SAM_KEYS_ORDER.index(x) if x in SAM_KEYS_ORDER else 1000)}

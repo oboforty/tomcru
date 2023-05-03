@@ -2,7 +2,7 @@ from datetime import datetime
 import time
 
 
-class EmeLambdaContext:
+class LambdaHostedPyContext:
     def __init__(self, ctx_cfg: dict):
         self.max_lambda_time_ms = ctx_cfg.get('timeout', 900)
         self.start = time.time()

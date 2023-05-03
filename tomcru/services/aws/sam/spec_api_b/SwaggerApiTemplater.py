@@ -1,4 +1,4 @@
-from tomcru import TomcruProject, TomcruApiDescriptor, TomcruEndpointDescriptor, TomcruLambdaIntegrationDescription, TomcruApiLambdaAuthorizerDescriptor, TomcruApiOIDCAuthorizerDescriptor, TomcruRouteDescriptor
+from tomcru import TomcruProject, TomcruApiEP, TomcruEndpoint, TomcruLambdaIntegrationEP, TomcruApiLambdaAuthorizerEP, TomcruApiOIDCAuthorizerEP, TomcruRouteEP
 
 from .integrations.SAMLambdaBuilder import SAMLambdaBuilder
 from .authorizers.SAMLambdaAuthBuilder import SAMLambdaAuthBuilder
@@ -14,15 +14,15 @@ class SwaggerApiTemplater:
         self.param_builder = project.serv('aws:sam:params_b')
 
         self.integrations_b: dict[type, object] = {
-            TomcruLambdaIntegrationDescription: SAMLambdaBuilder(self.param_builder, self.lambda_builder)
+            TomcruLambdaIntegrationEP: SAMLambdaBuilder(self.param_builder, self.lambda_builder)
         }
 
         self.authorizers_b: dict[type, object] = {
-            TomcruApiLambdaAuthorizerDescriptor: SAMLambdaAuthBuilder(self.param_builder, self.lambda_builder, self.opts['external_authorizers']),
-            TomcruApiOIDCAuthorizerDescriptor: SAMOIDCAuthBuilder(self.param_builder)
+            TomcruApiLambdaAuthorizerEP: SAMLambdaAuthBuilder(self.param_builder, self.lambda_builder, self.opts['external_authorizers']),
+            TomcruApiOIDCAuthorizerEP: SAMOIDCAuthBuilder(self.param_builder)
         }
 
-    def build_api(self, api: TomcruApiDescriptor, env: str):
+    def build_api(self, api: TomcruApiEP, env: str):
         # todo: stage var
         # todo: env var?
 
@@ -41,7 +41,7 @@ class SwaggerApiTemplater:
             }
         }
 
-    def _build_authorizers(self, spec, api: TomcruApiDescriptor):
+    def _build_authorizers(self, spec, api: TomcruApiEP):
         components = spec.get('components', {})
 
         if 'securitySchemes' in components:
@@ -54,12 +54,12 @@ class SwaggerApiTemplater:
                 auth_builder = self.authorizers_b[type(auth)]
                 auth_spec['x-amazon-apigateway-authorizer'] = auth_builder.build(auth_id, auth, apiopts)
 
-    def _build_endpoints(self, spec, api: TomcruApiDescriptor):
+    def _build_endpoints(self, spec, api: TomcruApiEP):
 
-        ro: TomcruRouteDescriptor
+        ro: TomcruRouteEP
         for route, ro in api.routes.items():
 
-            endpoint: TomcruEndpointDescriptor
+            endpoint: TomcruEndpoint
             for endpoint in ro.endpoints:
                 op = endpoint.spec_ref
 

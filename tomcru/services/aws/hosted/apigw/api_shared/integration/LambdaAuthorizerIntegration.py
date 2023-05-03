@@ -1,10 +1,10 @@
 from .TomcruApiGWHttpIntegration import TomcruApiGWAuthorizerIntegration
-from tomcru import TomcruApiLambdaAuthorizerDescriptor
+from tomcru import TomcruApiLambdaAuthorizerEP
 
 
 class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
-    def __init__(self, cfg: TomcruApiLambdaAuthorizerDescriptor, auth_cfg, lambda_builder, env=None):
+    def __init__(self, cfg: TomcruApiLambdaAuthorizerEP, auth_cfg, lambda_builder, env=None):
         super().__init__(cfg)
 
         self.lambda_builder = lambda_builder
@@ -26,7 +26,7 @@ class LambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         if self.source == 'cookies':
             raise NotImplementedError("Cookies are not yet supported in tomcru authorization (in local FaaS)")
 
-        self.lambda_builder.build_lambda(self.lambda_id, env=self.env)
+        self.lambda_builder.build_lambda(self.lambda_id)
 
     def authorize(self, event: dict):
         """
