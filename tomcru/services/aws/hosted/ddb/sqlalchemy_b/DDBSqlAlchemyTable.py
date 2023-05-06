@@ -5,7 +5,7 @@ from botocore.exceptions import ClientError
 from sqlalchemy import text
 
 
-class DdbTableAdapter:
+class DDBSqlAlchemyTable:
     def __init__(self, sess, mapped_model, tabledef, autocommit=True):
         self.T = mapped_model
         self.TableDef = tabledef
@@ -253,3 +253,5 @@ class DdbTableAdapter:
     def _truncate(self):
         self.session.execute(f'''TRUNCATE TABLE "{self.table_name}"''')
         self.session.commit()
+
+

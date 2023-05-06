@@ -15,7 +15,7 @@ class Boto3Builder(ServiceBase):
         super().__init__(*args, **kwargs)
 
         # self.boto3_obj: Boto3 | None = None
-        self.boto3_obj = Boto3(self.get_resource, self.opts.get('allowed.clients', cast=set), self.opts.get('allowed.resources', cast=set))
+        self.boto3_obj = Boto3(self, self.opts.get('allowed.clients', cast=set), self.opts.get('allowed.resources', cast=set))
 
     def init(self):
         """
@@ -41,7 +41,13 @@ class Boto3Builder(ServiceBase):
         utils.clean_inject('boto3')
 
     def add_resource(self, res_id, res):
+        return self.service('obj_store').add('boto3', 'res-'+res_id, res)
+
+    def add_client(self, res_id, res):
         return self.service('obj_store').add('boto3', res_id, res)
 
     def get_resource(self, res_id):
+        return self.service('obj_store').get('boto3', 'res-'+res_id)
+
+    def get_client(self, res_id):
         return self.service('obj_store').get('boto3', res_id)

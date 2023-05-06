@@ -10,17 +10,15 @@ class Boto3:
     def client(self, resname, **kwargs):
         assert resname in self.allowed_clients
 
-        _obj = self._objs_getter(resname)
-        # if hasattr(_obj, 'as_boto3_resource'):
-        #     return _obj.as_boto3_resource(**kwargs)
+        _obj = self._objs_getter.get_client(resname)
+
         return _obj
 
     def resource(self, resname, **kwargs):
         assert resname in self.allowed_resources
 
-        _obj = self._objs_getter(resname)
-        # if hasattr(_obj, 'as_boto3_resource'):
-        #     return _obj.as_boto3_resource(**kwargs)
+        _obj = self._objs_getter.get_resource(resname)
+
         return _obj
 
     def Session(self):

@@ -1,5 +1,4 @@
 import jwt
-
 import requests
 
 from .TomcruApiGWHttpIntegration import TomcruApiGWAuthorizerIntegration
@@ -36,8 +35,16 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
             # base64 decode JWT & get JWK for it
             signing_key = self.jwks_client.get_signing_key_from_jwt(token_jwt)
 
+            # force convert to bytes (pyjwt has a bug of type mismatch between cryptography's _RSAPublicKey vs its own RSAPublicKey...)
+            from cryptography.hazmat.primitives import serialization
+            from cryptography.hazmat.primitives.hashes import SHA256, HashAlgorithm
+
+
+            pem = signing_key.key.public_bytes(encoding=serialization.Encoding.PEM,
+                                         format=serialization.PublicFormat.PKCS1)
+
             # verify JWT
-            data = jwt.decode(token_jwt, signing_key.key, algorithms=["RS256"], audience=self.audience, issuer=self.issuer)
+            data = jwt.decode(token_jwt, pem, algorithms=["RS256"], audience=self.audience, issuer=self.issuer)
             #headers = jwt.get_unverified_header(token_jwt)
             # jwk = next(filter(lambda x: x['kid'] == kid, jwks))
 
@@ -54,6 +61,7 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
             return data
         except (jwt.InvalidTokenError, AWSOIDCException) as e:
+            raise e
             # invalidated claims -> authorizer refuses the token
             print("Auth error: ", e)
             return None

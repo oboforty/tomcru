@@ -1,0 +1,14 @@
+{
+  "name": "aws-sdk",
+  "version": "2.1368.0",
+  "description": "mocked aws sdk",
+  "type": "module",
+  "main": "index.js",
+  "author": "",
+  "license": "MIT",
+  "exports": {
+    ".": "./index.js",
+    "./proxylib": "./proxylib.js"
+  },
+  "dependencies": {}
+}

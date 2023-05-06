@@ -2,84 +2,152 @@ import json
 from base64 import b64encode, b64decode
 import os
 import shutil
+import signal
 import subprocess
 
 from ..LambdaHostedPyContext import LambdaHostedPyContext
 from tomcru import TomcruEnvCfg
+
+json_type = dict | list | str
+
+def ser(o: json_type) -> str:
+    return b64encode(json.dumps(o).encode('utf8')).decode('utf8')
+
+def deser(s: str) -> json_type:
+    return json.loads(b64decode(s.encode('utf8')))
 
 
 class Py2NodeLambdaProxy:
     """
     This class forwards AWS lambda requests from python to a node.js executable.
     """
-    def __init__(self, lambda_id: str, lambda_path: str, env: TomcruEnvCfg, pck_path):
+    def __init__(self, lambda_id: str, lambda_path: str, env: TomcruEnvCfg, pck_path, srvmgr):
         self.lambda_id = lambda_id
         self.lambda_path = lambda_path
         self.env = env
 
         # todo: make option to provide node path in settings
         self.node_path: str | None = None
+        self.is_shell = False
+        self.timeout = 5
+        self.srvmgr = srvmgr
+        self.boto3 = None
+
+        self.proxy_path = os.path.join(pck_path, 'etc', 'proxies')
 
         # todo: verify if 'tomcru_integ' is in packages.json
 
-        self.proxy_file_name = 't_proxy.js'
-        self.proxy_file = os.path.join(self.env.spec_path, 'lambdas/_proxies', self.proxy_file_name)
-        if not os.path.exists(self.proxy_file):
-            self.proxy_file = os.path.join(pck_path, 'etc', 'proxies', self.proxy_file_name)
-
     def init(self):
         # inject AWS sdk object to node_modules
-        # @todo
-
-        # inject tomcru lambda js proxy
-        shutil.copy(self.proxy_file, self.lambda_path)
+        self.copy_proxy()
 
         if self.node_path is None:
             print("NODE PATH:", self.node_path)
             try:
                 self.node_path = subprocess.check_output('which node', text=True, shell=True).rstrip()
+                self.is_shell = False
             except:
                 self.node_path = 'node'
+                self.is_shell = True
+
 
     def deject_dependencies(self):
-        # remove AWS sdk & tomcru lambda js proxy from node_modules
-        fn = os.path.join(self.lambda_path, self.proxy_file_name)
-
-        if os.path.exists(fn):
-            os.remove(fn)
+        self.clean_proxy()
 
     def __call__(self, event: dict, context: LambdaHostedPyContext, **kwargs):
-        env_dict = os.environ.copy()#dict(os.environ)
+        env_dict = os.environ.copy()
+        cmd = [self.node_path, 't_proxy.js', ser(event)]
+        if self.is_shell:
+            cmd = ' '.join(cmd)
+
+        print("calling", cmd)
 
         # todo: @later: pass serialzied json as binary instead of base64 between processes
-        #, _ = os.path.splitext(self.proxy_file)
+        resp = None
+        with subprocess.Popen(cmd, bufsize=1, universal_newlines=True, shell=self.is_shell,
+                              cwd=self.lambda_path, env=env_dict,
+                              stdin=subprocess.PIPE, stdout=subprocess.PIPE) as p:
+            for line in p.stdout:
+                print("Received", line.rstrip('\n'))
+                if line.startswith('FOO'):
+                    p.stdin.write('BAR\n')
+                    continue
 
-        event_ser = b64encode(json.dumps(event).encode('utf8')).decode('utf8')
+                t_in = deser(line)
 
-        cmd = ' '.join([self.node_path, 't_proxy.js', event_ser])
+                if 'serv_id' in t_in:
+                    print("    REQUEST service:", t_in)
+                    if 'boto3' in t_in:
+                        import boto3
+                        #boto3 = self.srvmgr.service(self.env, 'boto3').boto3
+
+                        if t_in['boto3'] == 'resource':
+                            srv = boto3.resource(t_in['serv_id'])
+
+                            srv = getattr(srv, t_in['resource_type'])(t_in['resource_id'])
+                        else:
+                            srv = boto3.client(t_in['serv_id'])
+
+                        serv_resp = getattr(srv, t_in['method'])(**t_in['args'])
+                        p.stdin.write(ser(serv_resp)+'\n')
+                    else:
+                        raise NotImplementedError(t_in)
+                elif 'log' in t_in:
+                    print("    LOG received:", t_in['log'])
+                elif 'err' in t_in:
+                    print("    ERROR received:", t_in['err'])
+                elif 'resp' in t_in:
+                    resp = t_in['resp'].copy()
+                elif 'bye' in t_in:
+                    print("    said GOODBYE")
+                    p.send_signal(signal.SIGINT)
+                    break
+                else:
+                    print("unknown message from child:", t_in)
+
+            p.terminate()
+
+        if resp:
+            return resp
+        else:
+            raise Exception("no resp from lambda!")
+
+    def copy_proxy(self):
+        _aws = os.path.join(self.lambda_path, 'node_modules', 'aws-sdk')
+
+        if os.path.exists(_aws):
+            if os.path.exists(os.path.join(_aws, 'proxylib.js')):
+                print("RM PROXY")
+                shutil.rmtree(_aws)
+            else:
+                print("BACKUP AWS")
+                # save aws sdk
+                os.rename(_aws, _aws+'_tmp')
+
+        shutil.copy(os.path.join(self.proxy_path, 't_proxy.js'), self.lambda_path)
+        shutil.copytree(os.path.join(self.proxy_path, 'aws-sdk'), _aws)
+
+    def clean_proxy(self):
+        _aws = os.path.join(self.lambda_path, 'node_modules', 'aws-sdk')
+
+        if os.path.exists(_aws):
+            if os.path.exists(os.path.join(_aws, 'proxylib.js')):
+                # remove AWS sdk & tomcru lambda js proxy from node_modules
+                print("DELETE", _aws)
+                shutil.rmtree(_aws)
+            else:
+                print("NOOP")
 
         try:
-            result_b64 = subprocess.check_output(cmd,
-                                                 # capture_output=True,
-                                                 text=True, shell=True,
-                                                 universal_newlines=True,
-                                                 # stderr=subprocess.STDOUT,
-                                                 env=env_dict,
-                                                 timeout=1,
-                                                 cwd=self.lambda_path)
-            try:
-                result = json.loads(b64decode(result_b64.encode('utf8')))
+            os.remove(os.path.join(self.lambda_path, 't_proxy.js'))
+        except:
+            pass
 
-                return result
-            except:
-                result = result_b64
-        except subprocess.CalledProcessError as e:
-            result = "err " + str(e.stderr)
-
-        return {
-            "result": str(result)
-        }
-
+        # add back aws-sdk
+        try:
+            os.rename(_aws+'_tmp', _aws)
+        except:
+            pass
 
     def close(self):
         self.deject_dependencies()
