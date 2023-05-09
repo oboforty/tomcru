@@ -1,5 +1,6 @@
 import os
 
+from sqlalchemy import JSON
 from sqlalchemy.ext.declarative import declarative_base
 
 from .SqlAlchemyJSONType import JSON_GEN
@@ -82,7 +83,8 @@ def build_database(app_path, dsn: str, dalcfg: dict):
             _columns.append(Column(colname, _types_map[t]()))
 
         # build content column
-        _columns.append(Column('ddb_content', JSON_GEN()))
+        #_columns.append(Column('ddb_content', JSON_GEN()))
+        _columns.append(Column('ddb_content', JSON))
 
         table = Table(table_name, _metadata, *_columns)
 

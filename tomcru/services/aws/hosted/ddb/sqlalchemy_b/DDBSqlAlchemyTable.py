@@ -1,4 +1,6 @@
 import re
+
+from sqlalchemy.orm import Session, Query, DeclarativeBase
 from sqlalchemy.orm.attributes import flag_modified
 
 from botocore.exceptions import ClientError
@@ -175,14 +177,11 @@ class DDBSqlAlchemyTable:
         else:
             raise NotImplementedError(method + " method DDB")
 
-        if 'ALL_NEW' == ReturnValues:
-            pass
+        # todo: @later filter only changed
+        if 'ALL_NEW' == ReturnValues or 'CHANGED_NEW' == ReturnValues or not ReturnValues:
             return {"Item": content, "Attributes": content}
-        elif 'ALL_OLD' == ReturnValues:
+        elif 'ALL_OLD' == ReturnValues or 'CHANGED_OLD' == ReturnValues:
             return {"Item": old_content, "Attributes": old_content}
-        # elif 'CHANGED_NEW' == ReturnValues:
-        # elif 'CHANGED_OLD' == ReturnValues:
-        raise NotImplementedError()
 
     def query(self, ExpressionAttributeValues=None, KeyConditionExpression=None, IndexName=None, **kwargs):
         # if ExpressionAttributeValues:
@@ -254,4 +253,5 @@ class DDBSqlAlchemyTable:
         self.session.execute(f'''TRUNCATE TABLE "{self.table_name}"''')
         self.session.commit()
 
-
+    def sql(self) -> tuple[Query, DeclarativeBase]:
+        return self.session.query(self.T), self.T

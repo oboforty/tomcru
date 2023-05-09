@@ -1,4 +1,3 @@
-import jwt
 import requests
 
 from .TomcruApiGWHttpIntegration import TomcruApiGWAuthorizerIntegration
@@ -25,7 +24,7 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         self.jwks_client: jwt.PyJWKClient | None = None
 
     def authorize(self, event: dict):
-        self._initialize_oidc()
+        jwt = self._initialize_oidc()
 
         if 'authorization' not in event['headers']:
             return None
@@ -35,16 +34,14 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
             # base64 decode JWT & get JWK for it
             signing_key = self.jwks_client.get_signing_key_from_jwt(token_jwt)
 
-            # force convert to bytes (pyjwt has a bug of type mismatch between cryptography's _RSAPublicKey vs its own RSAPublicKey...)
-            from cryptography.hazmat.primitives import serialization
-            from cryptography.hazmat.primitives.hashes import SHA256, HashAlgorithm
-
-
-            pem = signing_key.key.public_bytes(encoding=serialization.Encoding.PEM,
-                                         format=serialization.PublicFormat.PKCS1)
+            # jwk = {'alg': 'RS256', 'e': 'AQAB',
+            #        'kid': 'hnLucpd8Fq24b_5m16AuLmRHx0nTcw4K6Fq8XW8WQXU', 'kty': 'RSA',
+            #        'n': 'rZZot-D9G5g1Qk7UdfBH1PypwPK0jzQ2xZ34hQ4C7JBogRJSS1KRSwRQZxO5cWcoWvp7UUk4FpzBmAw_EidpgcJM7JfmkyX-OG2tY8_TtiNh57DZ4Jyugtc0xlcneVuKxhcGSwC5jWi4Lzz0O83AW-LNqfJ0wkxNJHdnA9ebipQuctZHYoTErKxX25yjmr8Y9oJAgiGqC1m8_BFhhJW2FX63K_u1TYME-WP4BCjctq5LSqVTGOP4TqQp_PJhdQKVwNy-ecK1G6u8ZJ9iTvnSdY4C5XB-bLMUgxTIneJOgJeTPMCgk1S91Wg2YjjRSyrjLeH7Kgi-N3s9noJOCV3MsQ',
+            #        'use': 'sig'}
+            # pyjwk = jwt.PyJWK(jwk)
 
             # verify JWT
-            data = jwt.decode(token_jwt, pem, algorithms=["RS256"], audience=self.audience, issuer=self.issuer)
+            data = jwt.decode(token_jwt, signing_key.key, algorithms=["RS256"], audience=self.audience, issuer=self.issuer)
             #headers = jwt.get_unverified_header(token_jwt)
             # jwk = next(filter(lambda x: x['kid'] == kid, jwks))
 
@@ -79,6 +76,7 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         return _scope
 
     def _initialize_oidc(self):
+        import jwt
         if self.initialized:
             return False
 
@@ -101,4 +99,4 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
         self.jwks_client = jwt.PyJWKClient(oidc['jwks_uri'], cache_jwk_set=True, lifespan=900)
 
-        return True
+        return jwt
