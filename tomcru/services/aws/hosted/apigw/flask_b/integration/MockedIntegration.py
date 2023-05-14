@@ -11,7 +11,7 @@ from tomcru_jerry.mockapi import transform_response
 
 
 base_headers = {
-    "content-type": "application/json"
+    "Content-Type": "application/json"
 }
 
 

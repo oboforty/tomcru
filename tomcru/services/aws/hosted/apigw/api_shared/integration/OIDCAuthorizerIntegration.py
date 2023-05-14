@@ -21,24 +21,19 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         self.initialized = False
         self.scopes_supported: list = None
         self.issuer = None
-        self.jwks_client: jwt.PyJWKClient | None = None
+        self.jwks_client = None
 
     def authorize(self, event: dict):
         jwt = self._initialize_oidc()
 
         if 'authorization' not in event['headers']:
             return None
-        token_jwt: str = event['headers']['authorization'].removeprefix('Bearer ')
-
         try:
+            prefix, token_jwt = event['headers']['authorization'].split(" ")
+            assert prefix.lower() in ('bearer', 'jwt')
+
             # base64 decode JWT & get JWK for it
             signing_key = self.jwks_client.get_signing_key_from_jwt(token_jwt)
-
-            # jwk = {'alg': 'RS256', 'e': 'AQAB',
-            #        'kid': 'hnLucpd8Fq24b_5m16AuLmRHx0nTcw4K6Fq8XW8WQXU', 'kty': 'RSA',
-            #        'n': 'rZZot-D9G5g1Qk7UdfBH1PypwPK0jzQ2xZ34hQ4C7JBogRJSS1KRSwRQZxO5cWcoWvp7UUk4FpzBmAw_EidpgcJM7JfmkyX-OG2tY8_TtiNh57DZ4Jyugtc0xlcneVuKxhcGSwC5jWi4Lzz0O83AW-LNqfJ0wkxNJHdnA9ebipQuctZHYoTErKxX25yjmr8Y9oJAgiGqC1m8_BFhhJW2FX63K_u1TYME-WP4BCjctq5LSqVTGOP4TqQp_PJhdQKVwNy-ecK1G6u8ZJ9iTvnSdY4C5XB-bLMUgxTIneJOgJeTPMCgk1S91Wg2YjjRSyrjLeH7Kgi-N3s9noJOCV3MsQ',
-            #        'use': 'sig'}
-            # pyjwk = jwt.PyJWK(jwk)
 
             # verify JWT
             data = jwt.decode(token_jwt, signing_key.key, algorithms=["RS256"], audience=self.audience, issuer=self.issuer)

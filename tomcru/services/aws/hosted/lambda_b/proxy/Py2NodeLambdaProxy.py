@@ -68,7 +68,6 @@ class Py2NodeLambdaProxy:
                               cwd=self.lambda_path, env=env_dict,
                               stdin=subprocess.PIPE, stdout=subprocess.PIPE) as p:
             for line in p.stdout:
-                print("Received", line.rstrip('\n'))
                 if line.startswith('FOO'):
                     p.stdin.write('BAR\n')
                     continue
@@ -76,7 +75,7 @@ class Py2NodeLambdaProxy:
                 t_in = deser(line)
 
                 if 'serv_id' in t_in:
-                    print("    REQUEST service:", t_in)
+                    print("  [LUAEXEC]: requesting service", t_in)
                     if 'boto3' in t_in:
                         import boto3
                         #boto3 = self.srvmgr.service(self.env, 'boto3').boto3
@@ -93,17 +92,17 @@ class Py2NodeLambdaProxy:
                     else:
                         raise NotImplementedError(t_in)
                 elif 'log' in t_in:
-                    print("    LOG received:", t_in['log'])
+                    print("  [LUAEXEC.LOG]:", t_in['log'])
                 elif 'err' in t_in:
-                    print("    ERROR received:", t_in['err'])
+                    print("  [LUAEXEC.ERROR]:", t_in['err'])
                 elif 'resp' in t_in:
                     resp = t_in['resp'].copy()
                 elif 'bye' in t_in:
-                    print("    said GOODBYE")
+                    print("  [LUAEXEC] said GOODBYE")
                     p.send_signal(signal.SIGINT)
                     break
                 else:
-                    print("unknown message from child:", t_in)
+                    print("  [LUAEXEC] received:", line.rstrip('\n'))
 
             p.terminate()
 

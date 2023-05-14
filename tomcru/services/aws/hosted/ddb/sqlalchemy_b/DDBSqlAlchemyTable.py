@@ -1,6 +1,6 @@
 import re
 
-from sqlalchemy.orm import Session, Query, DeclarativeBase
+from sqlalchemy.orm import Session, Query
 from sqlalchemy.orm.attributes import flag_modified
 
 from botocore.exceptions import ClientError
@@ -58,8 +58,6 @@ class DDBSqlAlchemyTable:
             #             setattr(self, k, v)
             #
             #         self.ddb_content = kwargs.copy()
-
-            print(1)
             #ent = self.T(**Item)
         else:
             ent.ddb_content = Item
@@ -253,5 +251,5 @@ class DDBSqlAlchemyTable:
         self.session.execute(f'''TRUNCATE TABLE "{self.table_name}"''')
         self.session.commit()
 
-    def sql(self) -> tuple[Query, DeclarativeBase]:
+    def sql(self) -> tuple[Query, object]:
         return self.session.query(self.T), self.T

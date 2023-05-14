@@ -4,9 +4,11 @@ from tomcru.services.aws.hosted.apigw.api_shared.integration import TomcruApiGWH
     LambdaAuthorizerIntegration
 from tomcru import TomcruApiEP, TomcruLambdaIntegrationEP, TomcruEndpoint
 
-
 base_headers = {
-    "content-type": "application/json"
+    "Access-Control-Expose-Headers": "*",
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "*"
 }
 
 

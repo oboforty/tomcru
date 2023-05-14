@@ -72,7 +72,7 @@ class S3AdapterLocal:
 
         if not os.path.exists(from_path):
             # todo: throw proper boto3 exception
-            raise Exception("not exists")
+            raise Exception("S3 adapter: path not found: " + from_path)
 
         shutil.copy(from_path, Filename)
 
