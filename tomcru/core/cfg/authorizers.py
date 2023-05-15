@@ -32,15 +32,13 @@ class TomcruApiLambdaAuthorizerEP(TomcruApiAuthorizerEP):
 
 
 class TomcruApiOIDCAuthorizerEP(TomcruApiAuthorizerEP):
-    def __init__(self, auth_id, endpoint, audience, scopes):
+    def __init__(self, auth_id, endpoint):
         """
 
         :param auth_type:
         :param integ_id:
         """
         super().__init__(auth_id, 'oidc', endpoint)
-        self.audience = audience
-        self.scopes = scopes
 
     @property
     def endpoint_url(self):

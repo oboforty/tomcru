@@ -111,9 +111,9 @@ class SwaggerCfgParser:
 
             # oidc endpoint is going to be redundant because SAM also requires it
             endpoint = spec['openIdConnectUrl']
-            oidc_cfg = spec.pop('x-oidc')
+            # oidc_cfg = spec.pop('x-oidc')
 
-            return TomcruApiOIDCAuthorizerEP(auth_id, endpoint, oidc_cfg.get('audience'), oidc_cfg.get('scopes'))
+            return TomcruApiOIDCAuthorizerEP(auth_id, endpoint)
         elif spec['type'] == 'oauth2':
             raise NotImplementedError("we don't know how to implement this LOL")
         else:
