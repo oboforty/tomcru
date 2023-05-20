@@ -4,13 +4,6 @@ from tomcru.services.aws.hosted.apigw.api_shared.integration import TomcruApiGWH
     LambdaAuthorizerIntegration
 from tomcru import TomcruApiEP, TomcruLambdaIntegrationEP, TomcruEndpoint
 
-base_headers = {
-    "Access-Control-Expose-Headers": "*",
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "*"
-}
-
 
 class LambdaIntegration(TomcruApiGWHttpIntegration):
 
@@ -22,13 +15,13 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
 
         self.lambda_builder.build_lambda(endpoint.lambda_id)
 
-    def on_request(self, **kwargs):
+    def on_request(self, base_headers: dict, **kwargs):
         evt = self.get_event(**kwargs)
 
         if not self.auth_integ or self.auth_integ.authorize(evt):
             resp = self.lambda_builder.run_lambda(self.endpoint.lambda_id, evt)
 
-            return self.parse_response(resp)
+            return self.parse_response(resp, base_headers=base_headers)
         else:
             # todo: handle unauthenticated
             raise Exception("Authorizer refused")
@@ -78,7 +71,7 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
 
         return event
 
-    def parse_response(self, content: dict):
+    def parse_response(self, content: dict, base_headers: dict):
         """
         Parses HTTP lambda integration's response to flask response
         :param resp: lambda integration response (2.0 format)

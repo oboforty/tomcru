@@ -1,4 +1,8 @@
+import logging
+
 from tomcru.core import utils
+
+logger = logging.getLogger('tomcru')
 
 
 class InjectableAppBase:
@@ -24,11 +28,10 @@ class InjectableAppBase:
 
             for serv_id, service in sorted(self.p.srvmgr, key=lambda s: s[1].INIT_PRIORITY):
                 if hasattr(service, 'init'):
-                    # todo: debug
-                    print(f"Initializing service {serv_id}[ENV={self.env.env}]")
+                    logger.debug(f"[{serv_id}] initializing (ENV={self.env.env})")
                     service.init()
                 else:
-                    print(f"Skipping init on {serv_id}[ENV={self.env.env}]")
+                    logger.debug(f"[{serv_id}] skipped init (ENV={self.env.env})")
 
         return self
 

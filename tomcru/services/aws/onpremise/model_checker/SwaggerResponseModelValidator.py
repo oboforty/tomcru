@@ -21,7 +21,7 @@ class SwaggerResponseModelValidator:
         _paths = api.spec_resolved_schemas['paths']
 
         if ep.route not in _paths:
-            self.log_warning("Not in paths")
+            logger.warning(f"[{self.__class__.__name__}] Not in paths")
 
         ep_model = _paths[ep.route][ep.method.lower()]
 
@@ -103,6 +103,3 @@ class SwaggerResponseModelValidator:
                 }
             }
         }
-
-    def log_warning(self, err):
-        print(err)

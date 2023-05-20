@@ -1,7 +1,11 @@
-import requests
+import logging
 
+import requests
 from .TomcruApiGWHttpIntegration import TomcruApiGWAuthorizerIntegration
 from tomcru import TomcruApiOIDCAuthorizerEP
+
+
+logger = logging.getLogger('tomcru')
 
 
 class AWSOIDCException(Exception):
@@ -59,9 +63,9 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
             return data
         except (jwt.InvalidTokenError, AWSOIDCException) as e:
-            raise e
             # invalidated claims -> authorizer refuses the token
-            print("Auth error: ", e)
+
+            logger.error("[OIDC] JWT Authorizer error: ", str(type(e)), e)
             return None
 
     def verify_claims(self, data: dict):

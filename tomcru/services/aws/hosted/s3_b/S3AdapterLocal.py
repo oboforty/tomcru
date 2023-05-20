@@ -1,8 +1,10 @@
+import logging
 import os.path
 import shutil
 
 from deepmerge import always_merger
 from typing.io import BinaryIO
+logger = logging.getLogger('tomcru')
 
 
 class S3AdapterLocal:
@@ -19,7 +21,7 @@ class S3AdapterLocal:
             bucket_cfg['path'] = os.path.join(app_path, path)
 
             if not os.path.exists(bucket_cfg['path']):
-                print("S3AdapterLocal: creating bucket directory:", bucket_cfg['path'])
+                logger.debug(f"S3AdapterLocal: creating bucket directory: {bucket_cfg['path']}")
                 os.makedirs(bucket_cfg['path'])
 
     def _get_path(self, Bucket, Key):

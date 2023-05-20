@@ -1,4 +1,5 @@
 import json
+import logging
 from base64 import b64encode, b64decode
 import os
 import shutil
@@ -9,6 +10,8 @@ from ..LambdaHostedPyContext import LambdaHostedPyContext
 from tomcru import TomcruEnvCfg
 
 json_type = dict | list | str
+logger = logging.getLogger('tomcru')
+
 
 def ser(o: json_type) -> str:
     return b64encode(json.dumps(o).encode('utf8')).decode('utf8')
@@ -21,7 +24,7 @@ class Py2NodeLambdaProxy:
     """
     This class forwards AWS lambda requests from python to a node.js executable.
     """
-    def __init__(self, lambda_id: str, lambda_path: str, env: TomcruEnvCfg, pck_path, srvmgr):
+    def __init__(self, lambda_id: str, lambda_path: str, env: TomcruEnvCfg, pck_path, srvmgr, cleanup=False):
         self.lambda_id = lambda_id
         self.lambda_path = lambda_path
         self.env = env
@@ -32,6 +35,7 @@ class Py2NodeLambdaProxy:
         self.timeout = 5
         self.srvmgr = srvmgr
         self.boto3 = None
+        self.cleanup: bool = cleanup
 
         self.proxy_path = os.path.join(pck_path, 'etc', 'proxies')
 
@@ -42,13 +46,13 @@ class Py2NodeLambdaProxy:
         self.copy_proxy()
 
         if self.node_path is None:
-            print("NODE PATH:", self.node_path)
             try:
                 self.node_path = subprocess.check_output('which node', text=True, shell=True).rstrip()
                 self.is_shell = False
             except:
                 self.node_path = 'node'
                 self.is_shell = True
+        logger.debug(f"[Py2NodeLambdaProxy] NODE PATH: {self.node_path} Is shell? {self.is_shell}")
 
 
     def deject_dependencies(self):
@@ -60,7 +64,7 @@ class Py2NodeLambdaProxy:
         if self.is_shell:
             cmd = ' '.join(cmd)
 
-        print("calling", cmd)
+        logger.debug(f"[Py2NodeLambdaProxy] calling f{cmd}")
 
         # todo: @later: pass serialzied json as binary instead of base64 between processes
         resp = None
@@ -68,14 +72,11 @@ class Py2NodeLambdaProxy:
                               cwd=self.lambda_path, env=env_dict,
                               stdin=subprocess.PIPE, stdout=subprocess.PIPE) as p:
             for line in p.stdout:
-                if line.startswith('FOO'):
-                    p.stdin.write('BAR\n')
-                    continue
-
                 t_in = deser(line)
 
                 if 'serv_id' in t_in:
-                    print("  [LUAEXEC]: requesting service", t_in)
+                    logger.debug(f"[Py2NodeLambdaProxy] requesting service f{t_in}")
+
                     if 'boto3' in t_in:
                         import boto3
                         #boto3 = self.srvmgr.service(self.env, 'boto3').boto3
@@ -92,17 +93,18 @@ class Py2NodeLambdaProxy:
                     else:
                         raise NotImplementedError(t_in)
                 elif 'log' in t_in:
-                    print("  [LUAEXEC.LOG]:", t_in['log'])
+                    logger.info(f"[Py2NodeLambdaProxy] log f{t_in['log']}")
                 elif 'err' in t_in:
-                    print("  [LUAEXEC.ERROR]:", t_in['err'])
+                    logger.error(f"[Py2NodeLambdaProxy] error f{t_in['err']}")
                 elif 'resp' in t_in:
                     resp = t_in['resp'].copy()
                 elif 'bye' in t_in:
-                    print("  [LUAEXEC] said GOODBYE")
+                    logger.info(f"[Py2NodeLambdaProxy] said GOODBYE")
                     p.send_signal(signal.SIGINT)
                     break
                 else:
-                    print("  [LUAEXEC] received:", line.rstrip('\n'))
+                    line = line.rstrip('\n')
+                    logger.warning(f"[Py2NodeLambdaProxy] received unknown: {line}")
 
             p.terminate()
 
@@ -116,10 +118,8 @@ class Py2NodeLambdaProxy:
 
         if os.path.exists(_aws):
             if os.path.exists(os.path.join(_aws, 'proxylib.js')):
-                print("RM PROXY")
                 shutil.rmtree(_aws)
             else:
-                print("BACKUP AWS")
                 # save aws sdk
                 os.rename(_aws, _aws+'_tmp')
 
@@ -132,10 +132,7 @@ class Py2NodeLambdaProxy:
         if os.path.exists(_aws):
             if os.path.exists(os.path.join(_aws, 'proxylib.js')):
                 # remove AWS sdk & tomcru lambda js proxy from node_modules
-                print("DELETE", _aws)
                 shutil.rmtree(_aws)
-            else:
-                print("NOOP")
 
         try:
             os.remove(os.path.join(self.lambda_path, 't_proxy.js'))

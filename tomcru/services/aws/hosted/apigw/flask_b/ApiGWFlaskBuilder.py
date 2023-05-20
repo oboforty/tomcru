@@ -13,6 +13,7 @@ from tomcru_jerry.controllers import add_endpoint
 __dir__ = os.path.dirname(os.path.realpath(__file__))
 
 from tomcru.services.aws.hosted.apigw.api_shared.ApiGWBuilderBase import ApiGWBuilderBase
+from tomcru.services.aws.hosted.apigw.api_shared.integration.FlaskCorsAfterRequestHook import FlaskCorsAfterRequestHook
 
 
 class ApiGWFlaskBuilder(ApiGWBuilderBase):
@@ -124,3 +125,12 @@ class ApiGWFlaskBuilder(ApiGWBuilderBase):
             raise NotImplementedError(type(endpoint))
 
         return _integration
+
+    def build_acl(self, api: TomcruApiEP, acl: dict):
+        if acl is None:
+            return
+
+        app: Flask = self.apps[api.api_name]
+
+        f = FlaskCorsAfterRequestHook(acl)
+        app.after_request(lambda resp: f(request, resp))

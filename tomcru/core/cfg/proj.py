@@ -55,6 +55,7 @@ class TomcruEnvCfg:
         self.vendors: list[str] = cfg['envcfg']['vendors']
         self.target: str = cfg['envcfg']['target']
         self.service_type: str = cfg['envcfg'].get('service_type', 'faas')
+        self.logging: dict = cfg['envcfg'].get('logging')
 
         # environment variables for various services
         self.global_envvars: dict[str, str] = {}

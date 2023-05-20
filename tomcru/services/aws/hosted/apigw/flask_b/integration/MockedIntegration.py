@@ -24,7 +24,7 @@ class MockedIntegration(LambdaIntegration):
 
         self.response = response
 
-    def on_request(self, **kwargs):
+    def on_request(self, base_headers: dict, **kwargs):
         evt = self.get_event(**kwargs)
 
         if not self.auth_integ or self.auth_integ.authorize(evt):
@@ -44,7 +44,6 @@ class MockedIntegration(LambdaIntegration):
                 resp_tpl['headers'] = {}
 
             resp2, status = transform_response(resp_tpl, req)
-
             resp2['headers'].update(base_headers)
 
             if isinstance(resp2['body'], (str, float, int)):

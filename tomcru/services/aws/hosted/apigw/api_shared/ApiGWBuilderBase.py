@@ -1,3 +1,4 @@
+import logging
 import os.path
 
 from abc import ABCMeta, abstractmethod
@@ -7,6 +8,7 @@ from tomcru import TomcruApiEP, TomcruEndpoint, TomcruRouteEP, TomcruSwaggerInte
 from .integration import TomcruApiGWHttpIntegration, TomcruApiGWAuthorizerIntegration, LambdaAuthorizerIntegration, ExternalLambdaAuthorizerIntegration, OIDCAuthorizerIntegration
 
 __dir__ = os.path.dirname(os.path.realpath(__file__))
+logger = logging.getLogger('tomcru')
 
 
 class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
@@ -62,6 +64,7 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
         self.service('apigw_manager').add_app(self, conn_id)
 
         self._build_authorizers()
+        self.build_acl(api, apiopts.get('cors'))
         index = self._build_integrations(api, apiopts)
 
         self.add_extra_route_handlers(api, index)
@@ -77,7 +80,7 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
             if isinstance(auth, TomcruApiLambdaAuthorizerEP):
                 # evaluate lambda sub type
                 if 'external' == auth.lambda_source:
-                    raise NotImplementedError("__fileloc__?")
+                    raise NotImplementedError("__fileloc__")
                     self.authorizers[authorizer_id] = ExternalLambdaAuthorizerIntegration(auth, self.opts)
                 else:
                     self.authorizers[authorizer_id] = LambdaAuthorizerIntegration(auth, self.opts, self.service('lambda'), env=self.env)
@@ -110,7 +113,7 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
                 _integration: TomcruApiGWHttpIntegration = self.get_integration(api, endpoint, auth)
 
                 if _integration is None:
-                    print(f"Not found integration for {endpoint}")
+                    logger.warning(f"Not found integration for {endpoint}")
                     continue
                 self.integrations[endpoint] = _integration
                 self.add_method(api, ro, endpoint, apiopts, _integration)
@@ -130,7 +133,11 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
 
         integ = self.integrations[ep]
 
-        response = integ.on_request(**kwargs)
+        base_headers = {
+            **self.opts.get('default.headers', {}),
+            **self.opts.get(f'apis.{api.api_name}.headers', {})
+        }
+        response = integ.on_request(base_headers=base_headers, **kwargs)
 
         if api.swagger_check_models and api.spec_resolved_schemas:
             # todo: make swagger model checker work
@@ -155,6 +162,10 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
 
     @abstractmethod
     def add_method(self, api: TomcruApiEP, route: TomcruRouteEP, endpoint: TomcruEndpoint, opts: dict, _integration: TomcruApiGWHttpIntegration):
+        pass
+
+    @abstractmethod
+    def build_acl(self, api: TomcruApiEP, acl: dict):
         pass
 
     @abstractmethod
