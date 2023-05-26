@@ -1,5 +1,7 @@
 import logging
 import os.path
+from collections import defaultdict
+from typing import Callable
 
 from abc import ABCMeta, abstractmethod
 
@@ -17,8 +19,8 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
         super().__init__(*args, **kwargs)
 
         self.authorizers: dict[str, str] = {}
-        self.integrations: dict[TomcruEndpoint, TomcruApiGWHttpIntegration] = {}
-        self.port2app: dict[int, str] = {}
+        self.integrations: dict[TomcruEndpoint, Callable] = {}
+        self.port2apps: dict[int, set] = defaultdict(set)
 
         self.apps: dict[str, object] = {}
 
@@ -49,12 +51,14 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
             if 'attach_to' in apiopts:
                 # attach this api to an already existing app
                 serv_id = apiopts['attach_to']['service']
-                api_name = apiopts['attach_to']['app']
+                parent_api_name = apiopts['attach_to']['app']
 
                 try:
-                    parent_app, parent_opts = self.service(serv_id).get_app(api_name)
+                    parent_app, parent_opts = self.service(serv_id).get_app(parent_api_name)
                 except:
-                    raise Exception(f"Referenced app not found in attach_to: {serv_id}->{api_name}")
+                    raise Exception(f"Referenced app not found in attach_to: {serv_id}->{parent_api_name}")
+
+                logger.debug(f"[apigw] {api_name} attaching to {parent_api_name} ({serv_id})")
                 self.apps[api.api_name] = parent_app
 
             self._build_app(api, apiopts)
@@ -69,7 +73,7 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
 
         self.add_extra_route_handlers(api, index)
 
-        self.port2app[apiopts['port']] = api.api_name
+        self.port2apps[apiopts['port']].add(api.api_name)
 
     def _build_authorizers(self):
         authorizers = self.p.cfg.authorizers
@@ -101,10 +105,12 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
         _index = None
         _swagger: dict[str, TomcruSwaggerIntegrationEP | None] = {"json": None, "html": None, "yaml": None}
         api_root = apiopts.get('api_root', '')
+        logger.debug(f"[apigw] {api.api_name} Building integrations for {len(api.routes)} routes")
 
         # write endpoints to lambda + integrations
         ro: TomcruRouteEP
         for route, ro in api.routes.items():
+
             endpoint: TomcruEndpoint
             for endpoint in ro.endpoints:
                 auth = self.authorizers[endpoint.auth] if endpoint.auth else None
@@ -113,7 +119,7 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
                 _integration: TomcruApiGWHttpIntegration = self.get_integration(api, endpoint, auth)
 
                 if _integration is None:
-                    logger.warning(f"Not found integration for {endpoint}")
+                    logger.warning(f"[apigw] Not found integration for {endpoint}")
                     continue
                 self.integrations[endpoint] = _integration
                 self.add_method(api, ro, endpoint, apiopts, _integration)
@@ -131,13 +137,19 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
     def on_request(self, **kwargs):
         ep, api = self.get_called_endpoint(**kwargs)
 
+        if not ep or not api:
+            return dict(
+                statusCode=404,
+                body=""
+            )
+
         integ = self.integrations[ep]
 
         base_headers = {
             **self.opts.get('default.headers', {}),
             **self.opts.get(f'apis.{api.api_name}.headers', {})
         }
-        response = integ.on_request(base_headers=base_headers, **kwargs)
+        response = integ(base_headers=base_headers, **kwargs)
 
         if api.swagger_check_models and api.spec_resolved_schemas:
             # todo: make swagger model checker work
@@ -177,5 +189,5 @@ class ApiGWBuilderBase(ServiceBase, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_integration(self, api: TomcruApiEP, endpoint: TomcruEndpoint):
+    def get_integration(self, api: TomcruApiEP, endpoint: TomcruEndpoint, auth):
         pass

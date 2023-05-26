@@ -90,7 +90,12 @@ class LambdaBuilder(ServiceBase):
             fn = self._build_python_runtime(lambda_id, _lambd_path)
         elif os.path.exists(_lambd_path+'/package.json'):
             # node
-            fn = Py2NodeLambdaProxy(lambda_id, _lambd_path, self.env, self.p.pck_path, self.p.srvmgr)
+            fn = Py2NodeLambdaProxy(
+                lambda_id, _lambd_path,
+                self.env, self.p.pck_path, self.p.srvmgr,
+                node_path=self.opts.get('node_path'),
+                cleanup=self.opts.get('cleanup')
+            )
             fn.init()
             self.proxies.append(fn)
         else:

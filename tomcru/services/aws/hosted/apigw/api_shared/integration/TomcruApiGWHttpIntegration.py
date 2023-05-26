@@ -3,13 +3,6 @@ from abc import ABCMeta, abstractmethod
 from tomcru import TomcruApiAuthorizerEP
 
 
-class TomcruApiGWHttpIntegration(metaclass=ABCMeta):
-
-    @abstractmethod
-    def on_request(self, **kwargs):
-        raise NotImplementedError()
-
-
 class TomcruApiGWAuthorizerIntegration(metaclass=ABCMeta):
 
     def __init__(self, cfg: TomcruApiAuthorizerEP):

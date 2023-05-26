@@ -1,9 +1,8 @@
-from .boto3_proxy import DDBResource
-from .dal_ddb import build_database
 from tomcru.services.ServiceBase import ServiceBase
 
 from .DDBSqlAlchemyTable import DDBSqlAlchemyTable
-from .boto3_proxy import DDBClient, DDBResource
+from .dal_ddb import build_database
+from .DDBClient import DDBClient
 
 
 class DynamoDBBuilder(ServiceBase):
@@ -23,7 +22,6 @@ class DynamoDBBuilder(ServiceBase):
         sess, tables = build_database(self.env.app_path, self.opts.get('conn.dsn'), self.cfg.conf.get('tables'))
         tables = {k: DDBSqlAlchemyTable(sess, *t) for k,t in tables.items()}
         self.cli = DDBClient(tables)
-        self.res = DDBResource(tables)
+        #self.res = DDBResource(tables)
 
-        self.service('boto3').add_resource('dynamodb', self.res)
-        self.service('boto3').add_client('dynamodb', self.cli)
+        self.alias('dynamodb', self.cli)

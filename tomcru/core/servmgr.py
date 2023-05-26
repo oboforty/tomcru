@@ -56,6 +56,12 @@ class ServiceManager:
 
         return srv
 
+    def add_service(self, serv_id, srv):
+        if serv_id == 'obj_store_b' or serv_id == 'obj_store':
+            raise Exception("Can't override obj_store service")
+
+        self.objmgr.add('srv', serv_id, srv)
+
     def __iter__(self):
         return self.objmgr.iter_services()
 

@@ -29,7 +29,6 @@ def build_database(app_path, dsn: str, dalcfg: dict):
     # include here because tomcru's magic service integrator screws up
     from sqlalchemy import create_engine, Table, Column, String, Integer, LargeBinary, Index, MetaData
     from sqlalchemy.orm import sessionmaker, registry
-    import sqlite3
 
     # create sqlite engine
     #dalcfg = load_settings(app_path + '/sam/emecfg/ddb.ini')
@@ -48,21 +47,7 @@ def build_database(app_path, dsn: str, dalcfg: dict):
         'str': lambda: String(2048),
         'number': lambda: Integer(),
         'binary': lambda: LargeBinary(),
-        #'json': lambda: JSON_GEN(),
     }
-
-
-    # build table objects
-    # EntityBase = declarative_base()
-    #
-    # class AbstractModel(EntityBase):
-    #     __abstract__ = True  # this line is necessary
-    #
-    #     def __init__(self, **kwargs):
-    #         for k,v in kwargs.items():
-    #             setattr(self, k, v)
-    #
-    #         self.ddb_content = kwargs.copy()
 
     for table_name, descr in dalcfg.items():
         pkey = descr.pop('partition_key')
@@ -83,7 +68,6 @@ def build_database(app_path, dsn: str, dalcfg: dict):
             _columns.append(Column(colname, _types_map[t]()))
 
         # build content column
-        #_columns.append(Column('ddb_content', JSON_GEN()))
         _columns.append(Column('ddb_content', JSON))
 
         table = Table(table_name, _metadata, *_columns)

@@ -1,16 +1,18 @@
 import json
 import os
-from copy import deepcopy
+import logging
 
 from deepmerge import always_merger
 
-from tomcru.core.utils.toml_custom import toml, load_settings, SettingWrapper
+from tomcru.core.utils.toml_custom import toml, SettingWrapper
 from tomcru.core.utils.yaml_custom import yaml
 
-from ..core.utils.toml_custom import load_settings
 from tomcru import TomcruSubProjectCfg, TomcruRouteEP, TomcruEndpoint, TomcruApiEP, \
     TomcruApiLambdaAuthorizerEP, TomcruLambdaIntegrationEP, TomcruApiAuthorizerEP, \
-    TomcruSwaggerIntegrationEP, TomcruApiOIDCAuthorizerEP, TomcruMockedIntegrationEP
+    TomcruSwaggerIntegrationEP, TomcruApiOIDCAuthorizerEP, TomcruMockedIntegrationEP, \
+    TomcruAwsExposedApiIntegration
+
+logger = logging.getLogger('tomcru')
 
 
 class BaseCfgParser:
@@ -45,7 +47,7 @@ class BaseCfgParser:
     def parse_services(self):
         path = f'{self.cfg.app_path}/cfg'
 
-        print(f"Tomcru: Parsing services in {self.cfg.app_path}")
+        logger.debug(f"[CfgParser] Parsing services in {self.cfg.app_path}")
 
         # merge toml files before parsing
         all_configs = {}
@@ -129,7 +131,8 @@ class BaseCfgParser:
             # add authorizers
             if 'authorizers' in cfg:
                 # @TODO: put authorizers inside apis
-                print("@TODO: authorizers inside apis")
+
+                logger.error("[CfgParser] @TODO: authorizers inside apis")
                 # authorizers = r.pop('authorizers', {})
                 # # list authorizers
                 # for auth_id, integ_opt in authorizers.items():
@@ -207,14 +210,10 @@ class BaseCfgParser:
             layers = params.get('layers', apicfg.default_layers)
             role = params.get('role', apicfg.default_role)
 
-            # TODO: ITT: fix parsing layers
-
             # post parse layers
             if isinstance(layers, str):
                 layers = layers.split("|")
             if len(layers) > 0 and layers[0] == '': layers = layers.pop(0)
-
-            # override
 
             if check_files:
                 # check if files exist
@@ -224,10 +223,12 @@ class BaseCfgParser:
 
             # Lambda integration
             integ = TomcruLambdaIntegrationEP(route, method, group, lamb_name, layers, role, auth, integ_opts)
-        elif 'swagger' in params:
-            integ = TomcruSwaggerIntegrationEP(route, method, params['swagger'])
         elif 'mocked' in params:
             integ = TomcruMockedIntegrationEP(route, method, params['mocked'])
+        elif 'swagger' in params:
+            integ = TomcruSwaggerIntegrationEP(route, method, params['swagger'])
+        elif 'aws_api' in params:
+            integ = TomcruAwsExposedApiIntegration(route, method, params['aws_api'])
         else:
             raise Exception(f"Integration not recognized!")
 

@@ -24,13 +24,12 @@ class Py2NodeLambdaProxy:
     """
     This class forwards AWS lambda requests from python to a node.js executable.
     """
-    def __init__(self, lambda_id: str, lambda_path: str, env: TomcruEnvCfg, pck_path, srvmgr, cleanup=False):
+    def __init__(self, lambda_id: str, lambda_path: str, env: TomcruEnvCfg, pck_path, srvmgr, node_path=None, cleanup=False):
         self.lambda_id = lambda_id
         self.lambda_path = lambda_path
         self.env = env
 
-        # todo: make option to provide node path in settings
-        self.node_path: str | None = None
+        self.node_path: str | None = node_path
         self.is_shell = False
         self.timeout = 5
         self.srvmgr = srvmgr

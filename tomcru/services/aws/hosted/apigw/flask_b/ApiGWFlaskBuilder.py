@@ -2,18 +2,17 @@ import json
 import os.path
 import re
 
-from flask import request, Flask
-
+from flask import request, Flask, jsonify
 from tomcru.services.aws.hosted.apigw.api_shared.integration import TomcruApiGWHttpIntegration
-from .integration import SwaggerIntegration, LambdaIntegration, MockedIntegration
 
-from tomcru import TomcruApiEP, TomcruEndpoint, TomcruRouteEP, TomcruLambdaIntegrationEP, TomcruSwaggerIntegrationEP, TomcruMockedIntegrationEP, TomcruApiAuthorizerEP
+from tomcru import TomcruApiEP, TomcruEndpoint, TomcruRouteEP, TomcruLambdaIntegrationEP, TomcruSwaggerIntegrationEP, TomcruMockedIntegrationEP, TomcruApiAuthorizerEP, TomcruAwsExposedApiIntegration
 from tomcru_jerry.controllers import add_endpoint
 
 __dir__ = os.path.dirname(os.path.realpath(__file__))
 
 from tomcru.services.aws.hosted.apigw.api_shared.ApiGWBuilderBase import ApiGWBuilderBase
 from tomcru.services.aws.hosted.apigw.api_shared.integration.FlaskCorsAfterRequestHook import FlaskCorsAfterRequestHook
+from .integration import LambdaIntegration, SwaggerIntegration, MockedIntegration, aws_integ
 
 
 class ApiGWFlaskBuilder(ApiGWBuilderBase):
@@ -44,37 +43,60 @@ class ApiGWFlaskBuilder(ApiGWBuilderBase):
 
         return app
 
+    #def aws_integ(self, serv_id, proxy_args, **kwargs):
+    def aws_integ(self, serv_id, proxy_args=None, **kwargs):
+
+        # calls aws service
+        srv = self.service(serv_id)
+        if not srv:
+            return "", 404
+
+        # TODO: @later support access tokens too?
+        # todo: fetch key from request & store secret - non IAM way first
+
+        secret_getter = lambda x: "Fs1FR1MNeQkGWjcMCoTjAY9F0g0XbO9Pmau+kJvc"
+
+        return aws_integ.on_request(srv, request, secret_getter)
+
     def get_called_endpoint(self, **kwargs) -> tuple[TomcruEndpoint, TomcruApiEP]:
         # find api name by port
-        port = int(request.server[1])#request.host.split(':')[1] if ':' in request.host else 80
-        api_name = self.port2app.get(port) #cached store
+        port = int(request.server[1])
+        api_names = self.port2apps[port]
 
-        if not api_name:
-            # api_name = next(filter(lambda a: int(self.apps[a].name.split(':')[1]) == port, self.apps), None)
-            # look up api
-            for aname, app in self.apps.items():
-                _rules = set(map(str, app.url_map._rules))
-                if str(request.url_rule) in _rules:
-                    api_name = aname
-                    break
-            else:
-                raise Exception("Couldn't find api by port " + str(port))
+        for api_name in api_names:
+            api = self.p.cfg.apis[api_name]
+            api_root = self.opts.get(f'apis.{api.api_name}.api_root', '')
 
-            # cache expensive lookup
-            self.port2app[port] = api_name
+            # find route by flask request route
+            aws_route_key = str(request.url_rule)
+            aws_route_key = self.rgx_greedy_path_f2a.sub(r'{\1+}', aws_route_key)
+            aws_route_key = aws_route_key.replace('<', '{').replace('>', '}').removeprefix(api_root)
 
-        api = self.p.cfg.apis[api_name]
-        api_root = self.opts.get(f'apis.{api.api_name}.api_root', '')
+            route = api.routes.get(aws_route_key)
 
-        # find route by flask request route
-        aws_route_key = str(request.url_rule)
-        aws_route_key = self.rgx_greedy_path_f2a.sub(r'{\1+}', aws_route_key)
-        aws_route_key = aws_route_key.replace('<', '{').replace('>', '}').removeprefix(api_root)
+            if not route:
+                # continue searching for integration
+                continue
 
-        route = api.routes[aws_route_key]
-        endpoint = next(filter(lambda x: x.endpoint_id == request.endpoint, route.endpoints), None)
+            # search for endpoint in route
+            endpoint = next(filter(lambda x: x.endpoint_id == request.endpoint, route.endpoints), None)
+            return endpoint, api
 
-        return endpoint, api
+        return None, None
+
+        # if not api_name:
+        #     # look up api & cache
+        #     for aname, app in self.apps.items():
+        #         _rules = set(map(str, app.url_map._rules))
+        #         if str(request.url_rule) in _rules:
+        #             api_name = aname
+        #             break
+        #     else:
+        #         raise Exception("Couldn't find api by port " + str(port))
+        #
+        #     # cache expensive lookup
+        #     self.port2app[port] = api_name
+
 
     def add_method(self, api: TomcruApiEP, route: TomcruRouteEP, endpoint: TomcruEndpoint, apiopts: dict, _integration: object):
         # replace AWS APIGW route scheme to flask routing schema
@@ -121,6 +143,8 @@ class ApiGWFlaskBuilder(ApiGWBuilderBase):
                 raise NotImplementedError("OpenApi: Examples mock")
 
             _integration = MockedIntegration(endpoint, auth, response, env=self.env)
+        elif isinstance(endpoint, TomcruAwsExposedApiIntegration):
+            _integration = self.aws_integ
         else:
             raise NotImplementedError(type(endpoint))
 

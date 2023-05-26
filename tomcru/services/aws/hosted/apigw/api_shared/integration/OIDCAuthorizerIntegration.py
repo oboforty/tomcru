@@ -47,8 +47,6 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
 
             # verify JWT
             data = jwt.decode(token_jwt, signing_key.key, algorithms=["RS256"], audience=self.audience, issuer=self.issuer)
-            #headers = jwt.get_unverified_header(token_jwt)
-            # jwk = next(filter(lambda x: x['kid'] == kid, jwks))
 
             scopes = self.verify_claims(data)
 

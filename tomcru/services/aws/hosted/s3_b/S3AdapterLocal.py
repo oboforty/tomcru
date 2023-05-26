@@ -59,7 +59,6 @@ class S3AdapterLocal:
                 shutil.copyfileobj(Body, fh)
                 #fh.write(Body.read())
 
-
     def download_file(self, Bucket, Key, Filename, ExtraArgs=None, Callback=None, Config=None):
         from_path = self._get_path(Bucket, Key)
 

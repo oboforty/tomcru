@@ -1,11 +1,10 @@
 from flask import request, Response, jsonify
 
-from tomcru.services.aws.hosted.apigw.api_shared.integration import TomcruApiGWHttpIntegration, \
-    LambdaAuthorizerIntegration
+from tomcru.services.aws.hosted.apigw.api_shared.integration import LambdaAuthorizerIntegration
 from tomcru import TomcruApiEP, TomcruLambdaIntegrationEP, TomcruEndpoint
 
 
-class LambdaIntegration(TomcruApiGWHttpIntegration):
+class LambdaIntegration:
 
     def __init__(self, endpoint: TomcruLambdaIntegrationEP, auth: LambdaAuthorizerIntegration, lambda_builder, env=None):
         self.endpoint = endpoint
@@ -15,7 +14,7 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
 
         self.lambda_builder.build_lambda(endpoint.lambda_id)
 
-    def on_request(self, base_headers: dict, **kwargs):
+    def __call__(self, base_headers: dict, **kwargs):
         evt = self.get_event(**kwargs)
 
         if not self.auth_integ or self.auth_integ.authorize(evt):
@@ -36,6 +35,7 @@ class LambdaIntegration(TomcruApiGWHttpIntegration):
             'requestContext': {
                 "protocol": "HTTP/1.1",
                 #"httpMethod": self.endpoint.method,
+                "domainName": request.host_url,
                 "http": {
                     "method": self.endpoint.method,
                     "routeKey": route_key

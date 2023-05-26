@@ -18,5 +18,4 @@ class S3Service(ServiceBase):
 
         self.s3 = S3AdapterLocal(self.env.app_path, self.cfg, self.opts)
 
-        self.service('boto3').add_resource('s3', self.s3)
-        self.service('boto3').add_client('s3', self.s3)
+        self.alias('s3', self.s3)

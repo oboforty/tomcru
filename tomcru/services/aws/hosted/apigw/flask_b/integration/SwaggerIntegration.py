@@ -6,11 +6,10 @@ from io import StringIO
 from flask import Response, Flask
 from flask_swagger_ui import get_swaggerui_blueprint
 
-from tomcru.services.aws.hosted.apigw.api_shared.integration import TomcruApiGWHttpIntegration
 from tomcru import TomcruApiEP, TomcruSwaggerIntegrationEP, utils
 
 
-class SwaggerIntegration(TomcruApiGWHttpIntegration):
+class SwaggerIntegration:
 
     def __init__(self, api: TomcruApiEP, endpoint: TomcruSwaggerIntegrationEP, swagger_converter, env=None):
         # self.spec = api.spec
@@ -20,7 +19,7 @@ class SwaggerIntegration(TomcruApiGWHttpIntegration):
         self.env = env
         self.swagger_converter = swagger_converter
 
-    def on_request(self, **kwargs):
+    def __call__(self, **kwargs):
 
         # todo: we don't really need auth here, but maybe?
 

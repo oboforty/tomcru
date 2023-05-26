@@ -13,7 +13,7 @@ class ApiGWMgr(ServiceBase):
         self.conn = {}
 
     def init(self):
-        self.service('boto3').add_resource('apigatewaymanagementapi', self)
+        self.alias('apigatewaymanagementapi')
 
     def add_app(self, app, ConnectionId):
         self.conn[ConnectionId] = app

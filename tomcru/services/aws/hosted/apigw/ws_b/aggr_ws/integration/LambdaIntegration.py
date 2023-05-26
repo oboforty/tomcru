@@ -20,7 +20,7 @@ class LambdaIntegration(TomcruApiGWWsIntegration):
 
         self.lambda_builder.build_lambda(endpoint.lambda_id, env=self.env)
 
-    def on_request(self, **kwargs):
+    def __call__(self, **kwargs):
         evt = self.get_event(**kwargs)
 
         assert self.auth_integ is not None

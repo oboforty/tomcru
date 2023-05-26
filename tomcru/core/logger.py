@@ -3,8 +3,8 @@ import logging.handlers
 
 
 def init_logging(loglvl, filepath=None):
-
-    format_detail = '%(asctime)s [%(name)s (%(process)d)] - %(levelname)s: %(message)s'
+    # [%(name)s (%(process)d)] 
+    format_detail = '%(asctime)s %(levelname)s: %(message)s'
     formatter = logging.Formatter(format_detail)
 
     _logger = logging.getLogger('tomcru')

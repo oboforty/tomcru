@@ -17,3 +17,8 @@ class ServiceBase:
 
     def object(self, serv, name):
         return self.p.objmgr.get(serv, name)
+
+    def alias(self, name: str, serv_obj=None):
+        if serv_obj is None:
+            serv_obj = self
+        self.service('obj_store').add('srv', name, serv_obj)

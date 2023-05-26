@@ -122,7 +122,7 @@ class TomcruSwaggerIntegrationEP(TomcruEndpoint):
 
 
 class TomcruMockedIntegrationEP(TomcruEndpoint):
-    def __init__(self, route, method, operationId, file, example):
+    def __init__(self, route, method, operationId, file=None, example=None):
         """
 
         :param route:
@@ -139,6 +139,28 @@ class TomcruMockedIntegrationEP(TomcruEndpoint):
     @property
     def integ_id(self):
         return os.path.basename(self.operationId)
+
+    @property
+    def method_name(self):
+        return f'{self.method.lower()}_{self.integ_id}'
+
+
+class TomcruAwsExposedApiIntegration(TomcruEndpoint):
+    def __init__(self, route, method, aws_api):
+        """
+
+        :param route:
+        :param method:
+        :param resp:
+        """
+        super().__init__(route, method, None)
+
+        self.aws_api = aws_api
+
+    @property
+    def integ_id(self):
+        # there can only be one integ!
+        return 'aws_integ'
 
     @property
     def method_name(self):

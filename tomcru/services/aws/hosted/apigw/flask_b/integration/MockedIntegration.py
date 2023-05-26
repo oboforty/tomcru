@@ -24,7 +24,7 @@ class MockedIntegration(LambdaIntegration):
 
         self.response = response
 
-    def on_request(self, base_headers: dict, **kwargs):
+    def __call__(self, base_headers: dict, **kwargs):
         evt = self.get_event(**kwargs)
 
         if not self.auth_integ or self.auth_integ.authorize(evt):
