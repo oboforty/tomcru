@@ -4,23 +4,21 @@ import time
 from datetime import datetime
 from urllib import parse
 
-from tomcru import TomcruLambdaIntegrationEP
+from tomcru.services.aws.hosted.apigw_b.integration import LambdaAuthorizerIntegration
+from tomcru import TomcruApiEP, TomcruLambdaIntegrationEP, TomcruEndpoint
 
-from .TomcruApiGWWsIntegration import TomcruApiGWWsIntegration
 
+class LambdaIntegration:
 
-class LambdaIntegration(TomcruApiGWWsIntegration):
-
-    def __init__(self, wsapp, endpoint: TomcruLambdaIntegrationEP, auth, lambda_builder, env=None):
-        self.app = wsapp
+    def __init__(self, endpoint: TomcruLambdaIntegrationEP, auth: LambdaAuthorizerIntegration, lambda_builder, env=None):
         self.endpoint = endpoint
         self.auth_integ = auth
         self.lambda_builder = lambda_builder
         self.env = env
 
-        self.lambda_builder.build_lambda(endpoint.lambda_id, env=self.env)
+        self.lambda_builder.build_lambda(endpoint.lambda_id)
 
-    def __call__(self, **kwargs):
+    def __call__(self, base_headers: dict, **kwargs):
         evt = self.get_event(**kwargs)
 
         assert self.auth_integ is not None
@@ -32,13 +30,13 @@ class LambdaIntegration(TomcruApiGWWsIntegration):
             _auth_ok = self.auth_integ.check_cached_auth(evt)
 
         if _auth_ok:
-            resp = self.lambda_builder.run_lambda(self.endpoint.lambda_id, evt, self.env)
+            resp = self.lambda_builder.run_lambda(self.endpoint.lambda_id, evt)
 
             return self.parse_response(resp)
         else:
             # todo: handle unauthenticated
-            pass
-            raise Exception("asdasd")
+            raise Exception("Authorizer refused")
+
 
     def get_event(self, client, route, data: object, group=None, msid=None, user=None, token=None, **kwargs):
         # get called lambda
@@ -94,11 +92,15 @@ class LambdaIntegration(TomcruApiGWWsIntegration):
 
         return event
 
-    async def parse_response(self, resp: dict):
+
+    def parse_response(self, content: dict):
         """
-        Parses WS lambda integration's response. EME can return responses as 1 on 1
-        :param resp: lambda integration response (2.0 format)
-        :return: output_str, status_code
+        Parses WS lambda integration's response to websocket response
+        :param resp: lambda ws integration response
+        :return: output_str
         """
 
-        return None
+        return content
+
+    def __str__(self):
+        return str(self.endpoint)

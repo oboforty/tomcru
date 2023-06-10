@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tomcru"
-version = "0.3.0"
+version = "1.0.0"
 description = "Serverless app framework"
 authors = ["Rajmund Csombordi <rajmund.csombordi@hotmail.com>"]
 readme = "README.md"

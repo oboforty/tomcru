@@ -168,7 +168,6 @@ class DDBClient:
 
                     # set value and copy its type
                     attr = attrs[-1]
-
                     if attr.startswith('#'):
                         attr = ExpressionAttributeNames[attr]
                     _old_val = _val.get(attr)

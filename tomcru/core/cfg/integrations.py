@@ -93,6 +93,7 @@ class TomcruLambdaIntegrationEP(TomcruEndpoint):
         yield self.role
 
 
+
 class TomcruSwaggerIntegrationEP(TomcruEndpoint):
     def __init__(self, route, method, type):
         """

@@ -136,11 +136,16 @@ class LambdaBuilder(ServiceBase):
     def set_env_for(self, lamb_id):
         # inject global envvars
         for k, v in self.env.global_envvars.items():
-            os.environ.setdefault(k.upper(), str(v))
+            os.environ[k.upper()] = str(v)
 
-        if lamb_id not in self.env.envvars_lamb:
-            return
+        # inject AWS default envvars
+        aws_key = self.opts.get('set_aws_credentials')
+        if aws_key:
+            aws_secret = self.service('iam').get_secret_from_key(aws_key)
+            os.environ['AWS_ACCESS_KEY_ID'] = aws_key
+            os.environ['AWS_SECRET_ACCESS_KEY'] = aws_secret
 
         # inject lambda specific envvars
-        for k, v in self.env.envvars_lamb[lamb_id].items():
-            os.environ.setdefault(k.upper(), str(v))
+        if lamb_id in self.env.envvars_lamb:
+            for k, v in self.env.envvars_lamb[lamb_id].items():
+                os.environ[k.upper()] = str(v)

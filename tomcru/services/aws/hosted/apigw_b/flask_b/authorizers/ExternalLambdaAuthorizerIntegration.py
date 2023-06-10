@@ -1,8 +1,8 @@
 import json
 import os
 
-from .TomcruApiGWHttpIntegration import TomcruApiGWAuthorizerIntegration
 from tomcru import TomcruApiLambdaAuthorizerEP
+from tomcru.services.aws.hosted.apigw_b.TomcruApiGWAuthorizerIntegration import TomcruApiGWAuthorizerIntegration
 
 
 class ExternalLambdaAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):

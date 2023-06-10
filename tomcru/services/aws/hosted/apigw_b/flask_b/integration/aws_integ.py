@@ -19,7 +19,7 @@ class SigV4AuthFromRequest(SigV4Auth):
 
     def _modify_request_before_signing(self, request: AWSRequest):
         # override timestamp before _modify_request_before_signing, as it later overrides the date header
-        request.context['timestamp'] = x_amz_date = request.headers['X-Amz-Date']
+        request.context['timestamp'] = request.headers['X-Amz-Date']
 
         return super(SigV4AuthFromRequest, self)._modify_request_before_signing(request)
 
@@ -38,9 +38,8 @@ def signv4_verify(request, *, secret_getter) -> dict | None:
     key, _, region, serv_id, _ = claims_request['Credential'].split('/')
 
     # fetch user credentials:
-    token = None
     secret = secret_getter(key)
-    creds = Credentials(key, secret, token)
+    creds = Credentials(key, secret)
 
     # generate sign from user credentials
     # "service_name" is generally "execute-api" for signing API Gateway requests
@@ -53,14 +52,14 @@ def signv4_verify(request, *, secret_getter) -> dict | None:
     claims_user = get_auth_claims(aws_request.headers)
 
     if claims_request['Signature'] != claims_user['Signature']:
+        logger.error(f"[apigw] AWS Sigv4 invalid signature: \nExpected: {claims_user.get('Signature')}\nReceived: {claims_request.get('signature')}")
         return None
 
     # filter out all integration details
     serv_internal_id, target = request.headers['X-Amz-Target'].split('.')
     integ_details = dict(
         region=region, serv_id=serv_id, serv_internal_id=serv_internal_id, target=target,
-        content_type=canonical_headers['content-type'],
-        #key=key, user=None
+        content_type=canonical_headers['content-type']
     )
 
     return integ_details
@@ -71,7 +70,10 @@ def on_request(srv, request, secret_getter):
     integ = signv4_verify(request, secret_getter=secret_getter)
 
     if not integ:
-        return "invalid_signature", 403
+        return {
+            "__type": "com.amazon.coral.service#UnrecognizedClientException",
+            "message": "The security token included in the request is invalid."
+        }, 400
 
     # auto convert
     target_args: dict | None = None

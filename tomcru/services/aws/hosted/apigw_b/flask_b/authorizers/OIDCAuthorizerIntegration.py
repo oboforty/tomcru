@@ -1,8 +1,8 @@
 import logging
 
 import requests
-from .TomcruApiGWHttpIntegration import TomcruApiGWAuthorizerIntegration
 from tomcru import TomcruApiOIDCAuthorizerEP
+from tomcru.services.aws.hosted.apigw_b.TomcruApiGWAuthorizerIntegration import TomcruApiGWAuthorizerIntegration
 
 
 logger = logging.getLogger('tomcru')

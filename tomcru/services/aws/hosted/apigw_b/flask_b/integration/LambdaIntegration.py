@@ -1,12 +1,12 @@
 from flask import request, Response, jsonify
 
-from tomcru.services.aws.hosted.apigw.api_shared.integration import LambdaAuthorizerIntegration
+from tomcru.services.aws.hosted.apigw_b.TomcruApiGWAuthorizerIntegration import TomcruApiGWAuthorizerIntegration
 from tomcru import TomcruApiEP, TomcruLambdaIntegrationEP, TomcruEndpoint
 
 
 class LambdaIntegration:
 
-    def __init__(self, endpoint: TomcruLambdaIntegrationEP, auth: LambdaAuthorizerIntegration, lambda_builder, env=None):
+    def __init__(self, endpoint: TomcruLambdaIntegrationEP, auth: TomcruApiGWAuthorizerIntegration, lambda_builder, env=None):
         self.endpoint = endpoint
         self.auth_integ = auth
         self.lambda_builder = lambda_builder
@@ -95,3 +95,6 @@ class LambdaIntegration:
         resp.cookies = None
 
         return resp
+
+    def __str__(self):
+        return str(self.endpoint)

@@ -1,10 +1,10 @@
 import json
 
 from flask import request, jsonify, Response
+from tomcru.services.aws.hosted.apigw_b.TomcruApiGWAuthorizerIntegration import TomcruApiGWAuthorizerIntegration
 
 from .LambdaIntegration import LambdaIntegration
 from tomcru import TomcruMockedIntegrationEP
-from tomcru.services.aws.hosted.apigw.api_shared.integration.TomcruApiGWHttpIntegration import TomcruApiGWAuthorizerIntegration
 
 
 from tomcru_jerry.mockapi import transform_response
