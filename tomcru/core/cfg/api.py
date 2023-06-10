@@ -5,7 +5,6 @@ from .authorizers import TomcruApiAuthorizerEP
 from .integrations import TomcruEndpoint
 
 
-
 class TomcruApiEP:
     def __init__(self, api_name, api_type):
         """
@@ -14,7 +13,8 @@ class TomcruApiEP:
         :param api_type:
         """
         self.api_name = api_name
-        self.api_type = api_type # http | ws | rest
+        self.api_type = api_type
+        # http | ws | rest
 
         # Api configuration:
         self.enabled = True

@@ -37,6 +37,7 @@ class WebsocketApp:
         self.host = conf.get('host', '0.0.0.0')
         self.port = conf.get('port', 3000)
         self.route_sep = '/'
+        self.route_getter = lambda x: x.pop('route', None)
 
         # Flags
         self.debug = conf.get('debug')
@@ -66,7 +67,7 @@ class WebsocketApp:
                 rws = json.loads(message)
 
                 # get action
-                route = rws.pop("route", self.route_sep)
+                route = self.route_getter(rws) or self.route_sep
                 group, method = route.split(self.route_sep)
                 msid = rws.pop('msid', None)
 
@@ -195,22 +196,16 @@ class WebsocketApp:
         for room_id in self.rooms:
             await self.send_to_room(rws, room_id)
 
-    def start(self):
-        print("Websocket: listening on {}:{}".format(self.host, self.port))
-
-        asyncio.get_event_loop().run_until_complete(websockets.serve(self.handle_requests, self.host, self.port, klass=WsClient))
-        asyncio.get_event_loop().run_forever()
-
     def close(self):
         print("Exited websocket server")
         sys.exit()
 
-    def init_modules(self, modules, webconf):
-        for module in modules:
-            module.init_dal()
-
-            if hasattr(module, 'init_wsapp'):
-                module.init_wsapp(self, webconf)
+    # def init_modules(self, modules, webconf):
+    #     for module in modules:
+    #         module.init_dal()
+    #
+    #         if hasattr(module, 'init_wsapp'):
+    #             module.init_wsapp(self, webconf)
 
     def on_connect(self, client, path):
         self._clients[client.id] = client
@@ -236,7 +231,7 @@ class WebsocketApp:
 
         # todo call $DISCONNECT endpoint lambda
 
-    def run(self, host=None, port=None, debug=None):
+    def run(self, host=None, port=None, debug=None, threaded=None):
         if host:
             self.host = host
         if port:
@@ -244,7 +239,10 @@ class WebsocketApp:
         if debug is not None:
             self.debug = debug
 
-        self.start()
+        print("Websocket: listening on {}:{}".format(self.host, self.port))
+
+        asyncio.get_event_loop().run_until_complete(websockets.serve(self.handle_requests, self.host, self.port, klass=WsClient))
+        asyncio.get_event_loop().run_forever()
 
     def preset_endpoint(self, route_key, endpoint):
         # strip the verb from the url

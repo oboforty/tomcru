@@ -4,21 +4,20 @@ import time
 from datetime import datetime
 from urllib import parse
 
-from tomcru.services.aws.hosted.apigw_b.integration import LambdaAuthorizerIntegration
 from tomcru import TomcruApiEP, TomcruLambdaIntegrationEP, TomcruEndpoint
 
 
 class LambdaIntegration:
 
-    def __init__(self, endpoint: TomcruLambdaIntegrationEP, auth: LambdaAuthorizerIntegration, lambda_builder, env=None):
+    def __init__(self, app, endpoint: TomcruLambdaIntegrationEP, lambda_builder):
+        self.app = app
+        self.auth_integ = app._integ_authorizer
         self.endpoint = endpoint
-        self.auth_integ = auth
         self.lambda_builder = lambda_builder
-        self.env = env
 
         self.lambda_builder.build_lambda(endpoint.lambda_id)
 
-    def __call__(self, base_headers: dict, **kwargs):
+    async def __call__(self, base_headers: dict = None, **kwargs):
         evt = self.get_event(**kwargs)
 
         assert self.auth_integ is not None
@@ -36,7 +35,6 @@ class LambdaIntegration:
         else:
             # todo: handle unauthenticated
             raise Exception("Authorizer refused")
-
 
     def get_event(self, client, route, data: object, group=None, msid=None, user=None, token=None, **kwargs):
         # get called lambda
@@ -92,7 +90,6 @@ class LambdaIntegration:
 
         return event
 
-
     def parse_response(self, content: dict):
         """
         Parses WS lambda integration's response to websocket response
@@ -104,3 +101,6 @@ class LambdaIntegration:
 
     def __str__(self):
         return str(self.endpoint)
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__} endpoint={self.endpoint}>'

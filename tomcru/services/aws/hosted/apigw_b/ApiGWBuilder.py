@@ -9,6 +9,7 @@ from .ApiGWSubserviceBase import ApiGWSubserviceBase
 __dir__ = os.path.dirname(os.path.realpath(__file__))
 
 from tomcru.services.aws.hosted.apigw_b.flask_b import ApiGWFlaskSubservice
+from tomcru.services.aws.hosted.apigw_b.ws_b import ApiGWWebsocketsSubservice
 
 logger = logging.getLogger('tomcru')
 
@@ -29,7 +30,7 @@ class ApiGWBuilder(ServiceBase):
             self.sub_builders['http'] = ApiGWFlaskSubservice(self, *args, **kwargs)
 
         if self.opts.get('service.target_ws') == 'websockets':
-            print("@TODO: WS NOT IMPLEMENTED")
+            self.sub_builders['ws'] = ApiGWWebsocketsSubservice(self, *args, **kwargs)
 
     def get_app(self, api_name):
         if api_name not in self.apps:
@@ -60,7 +61,6 @@ class ApiGWBuilder(ServiceBase):
 
         # todo: check if app has been built
 
-        app = None
         api = self.p.cfg.apis[api_name]
         apiopts = {**self.opts.get('default', {}), **self.opts.get(f'apis.{api_name}', {})}
 
@@ -90,3 +90,6 @@ class ApiGWBuilder(ServiceBase):
         self.port2apps[apiopts['port']].add(api.api_name)
 
         return app, apiopts
+
+    def print_endpoints(self, app, apiopts):
+        return self.sub_builders[app.api_type].print_endpoints(app, apiopts)

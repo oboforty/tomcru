@@ -6,7 +6,9 @@ from typing import Callable
 
 from flask import request, Flask, jsonify
 
+from tomcru_jerry import flask_jerry_setup, print_endpoints
 from tomcru_jerry.controllers import add_endpoint
+
 from tomcru import \
     TomcruApiEP, TomcruEndpoint, TomcruRouteEP, \
     TomcruLambdaIntegrationEP, TomcruSwaggerIntegrationEP, TomcruMockedIntegrationEP,\
@@ -107,18 +109,6 @@ class ApiGWFlaskSubservice(ApiGWSubserviceBase):
 
         return _index
 
-    def _build_acl(self, api: TomcruApiEP, acl: dict):
-        if acl is None:
-            return
-
-        app: Flask = self.parent.apps[api.api_name]
-
-        f = FlaskCorsAfterRequestHook(acl)
-        app.after_request(lambda resp: f(request, resp))
-
-    def _build_extra_route_handlers(self, api: TomcruApiEP, index: TomcruEndpoint | None = None):
-        pass
-
     def _build_integration_to_endpoint(self, api: TomcruApiEP, endpoint: TomcruEndpoint, auth):
         _integration: Callable
 
@@ -163,6 +153,18 @@ class ApiGWFlaskSubservice(ApiGWSubserviceBase):
         _api_route = f'{endpoint.method.upper()} {api_root}{flask_route_key}'
 
         add_endpoint(self.parent.apps[api.api_name], _api_route, endpoint.endpoint_id, self._on_request)
+
+    def _build_acl(self, api: TomcruApiEP, acl: dict):
+        if acl is None:
+            return
+
+        app: Flask = self.parent.apps[api.api_name]
+
+        f = FlaskCorsAfterRequestHook(acl)
+        app.after_request(lambda resp: f(request, resp))
+
+    def _build_extra_route_handlers(self, api: TomcruApiEP, index: TomcruEndpoint | None = None):
+        pass
 
     def _on_request(self, **kwargs):
         port = int(request.server[1])
@@ -227,3 +229,7 @@ class ApiGWFlaskSubservice(ApiGWSubserviceBase):
 
         secret_getter = self.service('iam').get_secret_from_key
         return aws_integ.on_request(srv, request, secret_getter)
+
+    def print_endpoints(self, app, apiopts):
+        flask_jerry_setup(app, apiopts)
+        print_endpoints(app)
