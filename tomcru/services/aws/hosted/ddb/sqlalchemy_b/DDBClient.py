@@ -22,7 +22,8 @@ class DecimalEncoder(json.JSONEncoder):
             return str(obj)
         return json.JSONEncoder.default(self, obj)
 
-DDB_TYPE_KEYS = {'S','N','B','BOOL','NULL','M','L','SS','NS','BS'}
+
+DDB_TYPE_KEYS = {'S', 'N', 'B', 'BOOL', 'NULL', 'M', 'L', 'SS', 'NS', 'BS'}
 
 
 class DDBClient:
@@ -41,7 +42,7 @@ class DDBClient:
             resp = {"M": resp}
         return self._deserializer.deserialize(resp)
 
-    def aws_integ_parse_response(self, integ, response):
+    def aws_integ_parse_response(self, serv_id, region, response):
 
         #return """{"Item":{"M":{"yolo":{"BOOL":true},"items":{"M":{"cnt":{"N":"2"}}},"eid":{"S":"kecske"}}}}"""
         ATTR_TO_SERIALIZE = ('Attributes', 'Key', 'Item', 'Items')
@@ -248,14 +249,46 @@ class DDBClient:
             'Items': [{k:v for k,v in r.ddb_content.items() if k in attributes or attributes == 'ALL'} for r in result]
         }
 
-    # def batch_get_items(self, TableName, RequestItems, **kwargs):
-    #
-    #     return {
-    #         'Responses': items
-    #     }
-    #
-    # def batch_writer(self, **kwargs):
-    #     return DdbTableAdapter(self.session, self.T, autocommit=False)
-    #
-    # def batch_reader(self, **kwargs):
-    #     return DdbTableAdapter(self.session, self.T)
+    def BatchGetItem(self, RequestItems):
+        items = {}
+        err = {}
+
+        for TableName, commands in RequestItems.items():
+            items[TableName] = []
+
+            for key in commands['Keys']:
+                resp = self.GetItem(TableName=TableName, Key=key)
+                if 'Item' in resp:
+                    items[TableName].append(resp['Item'])
+                else:
+                    err.setdefault(TableName, {"Keys": []})
+                    err[TableName]['keys'].append(key)
+
+        return {
+            'Responses': items,
+            'ConsumedCapacity': [],
+            'UnprocessedKeys': err
+        }
+
+    def BatchWriteItem(self, RequestItems, **kwargs):
+        for TableName, commands in RequestItems.items():
+            table = self._tables[TableName]
+
+            autocommit = table._autocommit
+            table._autocommit = False
+
+            # todo: handle response and if not inserted, append UnprocessedItems
+            for command in commands:
+                if 'PutRequest' in command:
+                    self.PutItem(TableName=TableName, Item=command['PutRequest']['Item'])
+                if 'DeleteRequest' in command:
+                    self.DeleteItem(TableName=TableName, Key=command['DeleteRequest']['Key'])
+
+            table.session.commit()
+            table._autocommit = autocommit
+
+        return {
+            'ConsumedCapacity': [],
+            'ItemCollectionMetrics': {},
+            'UnprocessedItems': {}
+        }

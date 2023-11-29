@@ -23,7 +23,7 @@ class LambdaIntegration:
             return self.parse_response(resp, base_headers=base_headers)
         else:
             # todo: handle unauthenticated
-            raise Exception("Authorizer refused")
+            raise Exception(f"Authorizer refused: {self.auth_integ.last_err}")
 
     def get_event(self, **kwargs):
         route_key = f'{self.endpoint.method} {self.endpoint.route}'
@@ -44,7 +44,7 @@ class LambdaIntegration:
             'body': request.data.decode('utf8'),
             'queryStringParameters': dict(request.args),
             'headers': dict((k.lower(), v) for k, v in request.headers.items()),
-            'pathParameters': dict(request.view_args) | kwargs
+            'pathParameters': dict(request.view_args) | kwargs,
         }
 
         # apply request parameters transformation

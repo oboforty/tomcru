@@ -23,15 +23,10 @@ class CloudfrontFlaskBuilder(ServiceBase):
             raise Exception(f"Api {api_name} not found! Available apis: {', '.join(self.apps.keys())}")
         return self.apps[api_name], self.opts.get(f'apis.{api_name}', {})
 
-    def inject_dependencies(self):
-        for app_name, app_cfg in self.cfg.get('static_apps').items():
-            self._build_static_app(app_name, app_cfg)
+    def build_app(self, app_name):
+        app_cfg = self.cfg.get(f'static_apps.{app_name}')
 
-    def init(self):
-        pass
-
-    def deject_dependencies(self):
-        pass
+        self._build_static_app(app_name, app_cfg)
 
     def _build_static_app(self, app_name, app_cfg):
         path = os.path.join(self.env.app_path, app_cfg.get('path', os.path.join('static', app_name)))

@@ -55,7 +55,7 @@ class TomcruEnvCfg:
         self.vendors: list[str] = cfg['envcfg']['vendors']
         self.target: str = cfg['envcfg']['target']
         self.service_type: str = cfg['envcfg'].get('service_type', 'faas')
-        self.logging: dict = cfg['envcfg'].get('logging')
+        self.logging: dict = cfg['envcfg'].get('logging', {})
 
         # environment variables for various services
         self.global_envvars: dict[str, str] = {}
@@ -67,3 +67,6 @@ class TomcruEnvCfg:
     @property
     def spec_path(self) -> str:
         return os.path.join(self.app_path, 'envspec', self.env)
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__} env={self.env_id} path={self.app_path}>'

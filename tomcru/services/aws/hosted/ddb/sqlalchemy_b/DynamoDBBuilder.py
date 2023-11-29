@@ -1,3 +1,5 @@
+import os
+
 from tomcru.services.ServiceBase import ServiceBase
 
 from .DDBSqlAlchemyTable import DDBSqlAlchemyTable
@@ -18,8 +20,10 @@ class DynamoDBBuilder(ServiceBase):
         if self.cli:
             raise Exception("DDB: Already initialized")
 
+        db_testing = 'testdb' in os.getenv('EST_FLAGS', '').split(',')
+
         # todo: later: group obj instances by AWS-REGION ?
-        sess, tables = build_database(self.env.app_path, self.opts.get('conn.dsn'), self.cfg.conf.get('tables'))
+        sess, tables = build_database(self.env.app_path, self.opts.get('conn.dsn'), self.cfg.conf.get('tables'), db_testing)
         tables = {k: DDBSqlAlchemyTable(sess, *t) for k,t in tables.items()}
         self.cli = DDBClient(tables)
         #self.res = DDBResource(tables)

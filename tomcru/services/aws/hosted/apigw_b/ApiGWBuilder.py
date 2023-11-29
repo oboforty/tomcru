@@ -34,7 +34,6 @@ class ApiGWBuilder(ServiceBase):
 
     def get_app(self, api_name):
         if api_name not in self.apps:
-
             raise Exception(f"Api {api_name} not found! Available apis: {', '.join(self.apps.keys())}")
         return self.apps[api_name], self.opts.get(f'apis.{api_name}', {})
 
@@ -50,14 +49,14 @@ class ApiGWBuilder(ServiceBase):
             for api_name in self.autobuild:
                 self.build_api(api_name, attached_apps=True)
 
-    def build_api(self, api_name, attached_apps=False):
+    def build_api(self, api_name, use_attached_apps=True):
         """
         Build API
 
         :param api_name:
-        :param attached_apps:
+        :param use_attached_apps: whether to attach built app to another one, if confugred
         """
-        logger.info(f"[apigw] Building api {api_name} (attach={attached_apps})")
+        logger.info(f"[apigw] Building api {api_name} (attach={use_attached_apps})")
 
         # todo: check if app has been built
 
@@ -65,7 +64,7 @@ class ApiGWBuilder(ServiceBase):
         apiopts = {**self.opts.get('default', {}), **self.opts.get(f'apis.{api_name}', {})}
 
         if 'attach_to' in apiopts:
-            if not attached_apps:
+            if not use_attached_apps:
                 return None
 
             # attach this api to an already existing app

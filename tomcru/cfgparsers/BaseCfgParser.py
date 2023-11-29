@@ -227,7 +227,7 @@ class BaseCfgParser:
             integ = TomcruMockedIntegrationEP(route, method, params['mocked'])
         elif 'swagger' in params:
             integ = TomcruSwaggerIntegrationEP(route, method, params['swagger'])
-        elif 'aws_api' in params:
+        elif 'aws_api' in params or 'aws_http_proxy' in params:
             integ = TomcruAwsExposedApiIntegration(route, method, params['aws_api'])
         else:
             raise Exception(f"Integration not recognized!")

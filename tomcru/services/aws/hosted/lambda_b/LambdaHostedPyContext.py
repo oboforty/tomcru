@@ -3,9 +3,10 @@ import time
 
 
 class LambdaHostedPyContext:
-    def __init__(self, ctx_cfg: dict):
+    def __init__(self, ctx_cfg: dict, serv_getter):
         self.max_lambda_time_ms = ctx_cfg.get('timeout', 900)
         self.start = time.time()
+        self._tomcru_serv = serv_getter
 
     def get_remaining_time_in_millis(self):
         return self.max_lambda_time_ms - 1000*(time.time()-self.start)

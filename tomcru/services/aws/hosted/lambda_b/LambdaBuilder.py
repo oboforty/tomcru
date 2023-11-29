@@ -47,6 +47,9 @@ class LambdaBuilder(ServiceBase):
     def run_lambda(self, lamb_id, evt, **kwargs):
         lamb_fn = self.object('lambda', lamb_id)
 
+        if not lamb_fn:
+            raise Exception(f"Lambda {lamb_id} not found!")
+
         # prepare params
         sig = inspect.signature(lamb_fn)
         _lam_arsg = [evt]
@@ -131,7 +134,7 @@ class LambdaBuilder(ServiceBase):
         return module.handler
 
     def get_context(self, cfg):
-        return LambdaHostedPyContext(cfg)
+        return LambdaHostedPyContext(cfg, self.service)
 
     def set_env_for(self, lamb_id):
         # inject global envvars

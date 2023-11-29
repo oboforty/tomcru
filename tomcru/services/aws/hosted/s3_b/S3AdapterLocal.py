@@ -3,7 +3,9 @@ import os.path
 import shutil
 
 from deepmerge import always_merger
+from flask import send_from_directory
 from typing.io import BinaryIO
+
 logger = logging.getLogger('tomcru')
 
 
@@ -24,8 +26,61 @@ class S3AdapterLocal:
                 logger.debug(f"S3AdapterLocal: creating bucket directory: {bucket_cfg['path']}")
                 os.makedirs(bucket_cfg['path'])
 
+    def aws_integ_parse_request(self, target, region, request, target_args):
+        if target is None:
+            target = f'{request.method.lower()}_object'
+
+        if target not in ('get_object',):
+            target_args['Body'] = request.data
+        parts = request.view_args['proxy_args'].split('/')
+
+        target_args['Bucket'] = parts[0]
+        target_args['Key'] = request.view_args['proxy_args'].removeprefix(parts[0]+'/')
+
+        return target
+
     def _get_path(self, Bucket, Key):
         return os.path.join(self.buckets[Bucket]['path'], Key)
+
+    # ------------------------------
+    #     LOW LEVEL S3 (client)
+    # ------------------------------
+
+    def get_object(self, Bucket, Key):
+        to_path = self._get_path(Bucket, Key)
+
+        if not os.path.exists(to_path):
+            return "", 404
+
+        return '__FILE__', to_path
+
+    def put_object(self, Body: bytes | BinaryIO, Bucket, Key):
+        to_path = self._get_path(Bucket, Key)
+
+        to_dir = os.path.dirname(to_path)
+        if not os.path.exists(to_dir):
+            os.makedirs(to_dir)
+
+        if isinstance(Body, bytes):
+            with open(to_path, "wb") as fh:
+                fh.write(Body)
+        else:
+            # todo: does this ever occur when boto3 is not mocked?
+            raise NotImplementedError()
+            with open(to_path, 'b') as fh:
+                shutil.copyfileobj(Body, fh)
+                #fh.write(Body.read())
+
+        return "", 200
+
+    # ------------------------------
+    #    HIGH LEVEL S3 (resource)
+    # ------------------------------
+
+    def upload_fileobj(self, Fileobj, Bucket, Key, ExtraArgs=None, Callback=None, Config=None):
+        self.put_object(Fileobj, Bucket, Key)
+
+        # todo: apply meta tags & callback
 
     def upload_file(self, Filename, Bucket, Key):
         # with open(Filename, 'b') as fh:
@@ -43,21 +98,6 @@ class S3AdapterLocal:
             os.makedirs(to_dir)
 
         shutil.copy(Filename, to_path)
-
-    def upload_fileobj(self, Fileobj, Bucket, Key, ExtraArgs=None, Callback=None, Config=None):
-        self.put_object(Fileobj, Bucket, Key)
-
-        # todo: apply meta tags & callback
-
-    def put_object(self, Body: bytes | BinaryIO, Bucket, Key):
-        _path = self.buckets[Bucket]['path']
-
-        if isinstance(Body, bytes):
-            raise NotImplementedError()
-        else:
-            with open(_path, 'b') as fh:
-                shutil.copyfileobj(Body, fh)
-                #fh.write(Body.read())
 
     def download_file(self, Bucket, Key, Filename, ExtraArgs=None, Callback=None, Config=None):
         from_path = self._get_path(Bucket, Key)

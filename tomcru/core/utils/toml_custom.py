@@ -12,6 +12,9 @@ class SettingWrapper:
     def __getitem__(self, item):
         return self.conf.get(item)
 
+    def __setitem__(self, item, value):
+        self.conf[item] = value
+
     def __len__(self):
         return len(self.conf)
 
@@ -25,24 +28,3 @@ class SettingWrapper:
     def __repr__(self):
         return f'<SettingWrapper {repr(self.conf)}>'
 
-
-def load_settings(file, **kwargs) -> SettingWrapper:
-    config = configparser.ConfigParser(**kwargs)
-    config.optionxform = str
-    config.read(file)
-
-    conf = config._sections
-
-    if conf is None:
-        return None
-
-    for okey, oval in conf.items():
-        for key, val in oval.items():
-            if val.lower() in ('yes', 'true'):
-                conf[okey][key] = True
-            elif val.lower() in ('no', 'false'):
-                conf[okey][key] = False
-            elif ',' in val:
-                conf[okey][key] = val.split(',')
-
-    return SettingWrapper(conf)

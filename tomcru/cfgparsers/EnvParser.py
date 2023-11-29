@@ -3,7 +3,8 @@ from flatten_json import flatten
 from collections import defaultdict
 
 from tomcru.core.cfg.proj import TomcruEnvCfg
-from tomcru.core.utils.toml_custom import toml, load_settings, SettingWrapper
+from tomcru.core.utils.toml_custom import toml, SettingWrapper
+
 
 def unflatten_1lv(d):
     u = defaultdict(dict)

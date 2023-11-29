@@ -7,7 +7,6 @@ yaml.default_flow_style = False
 #yaml.indent(mapping=2, sequence=2, offset=2)
 
 
-
 class Ref:
     yaml_tag = '!Ref'
 
@@ -26,6 +25,7 @@ class Ref:
 
     def __repr__(self):
         return self.yaml_tag+' '+self.val.__repr__()
+
 
 class GetAtt:
     yaml_tag = '!GetAtt'

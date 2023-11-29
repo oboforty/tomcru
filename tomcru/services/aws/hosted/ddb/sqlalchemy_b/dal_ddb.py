@@ -6,7 +6,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from .SqlAlchemyJSONType import JSON_GEN
 
 
-def build_database(app_path, dsn: str, dalcfg: dict):
+def build_database(app_path, dsn: str, dalcfg: dict, testing=False):
     should_build_database = False
 
     if dsn.startswith('sqlite://'):
@@ -18,6 +18,11 @@ def build_database(app_path, dsn: str, dalcfg: dict):
             # guarantee that db is created in app path
             db_file_path = os.path.join(app_path, db_file_path)
             dsn = 'sqlite:///' + db_file_path
+
+        if testing:
+            # separate testing DB
+            dsn, ext = os.path.splitext(dsn)
+            dsn += '.test.db'
 
         should_build_database = not os.path.exists(db_file_path)
         connect_args = {'check_same_thread': False}
@@ -31,7 +36,6 @@ def build_database(app_path, dsn: str, dalcfg: dict):
     from sqlalchemy.orm import sessionmaker, registry
 
     # create sqlite engine
-    #dalcfg = load_settings(app_path + '/sam/emecfg/ddb.ini')
     db_engine = create_engine(dsn, connect_args=connect_args)
     Session = sessionmaker(bind=db_engine)
     db_session = Session()

@@ -27,6 +27,7 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         self.scopes_supported: list = None
         self.issuer = None
         self.jwks_client = None
+        self.last_err = None
 
     def authorize(self, event: dict):
         import jwt
@@ -37,6 +38,8 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
             self.jwks_client = jwt.PyJWKClient(oidc_cfg['jwks_uri'], cache_jwk_set=True, lifespan=900)
 
         if 'authorization' not in event['headers']:
+            self.last_err = "Missing Authorization header"
+
             return None
         try:
             prefix, token_jwt = event['headers']['authorization'].split(" ")
@@ -62,8 +65,13 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
             return data
         except (jwt.InvalidTokenError, AWSOIDCException) as e:
             # invalidated claims -> authorizer refuses the token
+            self.last_err = str(e)
 
             logger.error("[OIDC] JWT Authorizer error: ", str(type(e)), e)
+            return None
+        except Exception as e:
+            self.last_err = str(e)
+
             return None
 
     def verify_claims(self, data: dict):

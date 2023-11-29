@@ -70,9 +70,6 @@ class SwaggerCfgParser:
 
                 if not integ_opts:
                     continue
-                # if '$ref' in integ_opts:
-                #     print("!!!!!!!!!!!", method, integ_opts)
-                #     continue
 
                 # parse lambda integration
                 auth = integ_opts.pop('auth', default_auth)

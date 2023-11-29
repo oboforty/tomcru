@@ -4,10 +4,11 @@ import re
 import logging
 from typing import Callable
 
-from flask import request, Flask, jsonify
+from flask import request, Flask, jsonify, send_from_directory, g, current_app
 
 from tomcru_jerry import flask_jerry_setup, print_endpoints
 from tomcru_jerry.controllers import add_endpoint
+from tomcru_jerry.control import cors
 
 from tomcru import \
     TomcruApiEP, TomcruEndpoint, TomcruRouteEP, \
@@ -17,12 +18,13 @@ from tomcru import \
 from tomcru.services.aws.hosted.apigw_b.ApiGWSubserviceBase import ApiGWSubserviceBase
 from .integration import \
     LambdaIntegration, SwaggerIntegration, MockedIntegration,\
-    aws_integ, \
-    FlaskCorsAfterRequestHook
+    aws_integ
 from .authorizers import \
     LambdaAuthorizerIntegration, OIDCAuthorizerIntegration
 
 __dir__ = os.path.dirname(os.path.realpath(__file__))
+
+
 logger = logging.getLogger('tomcru')
 
 
@@ -67,9 +69,11 @@ class ApiGWFlaskSubservice(ApiGWSubserviceBase):
 
             elif isinstance(auth, TomcruApiOIDCAuthorizerEP):
                 self.authorizers[authorizer_id] = OIDCAuthorizerIntegration(auth, self.opts, env=self.env)
-            else:
+
+            if authorizer_id not in self.authorizers:
+                # raise unless authorizer integ were already defined earlier
                 # todo: implement IAM and jwt
-                raise NotImplementedError(authorizer_id)
+                raise NotImplementedError(f'{authorizer_id} - type: {type(auth)}')
 
         return self.authorizers
 
@@ -160,7 +164,7 @@ class ApiGWFlaskSubservice(ApiGWSubserviceBase):
 
         app: Flask = self.parent.apps[api.api_name]
 
-        f = FlaskCorsAfterRequestHook(acl)
+        f = cors(acl)
         app.after_request(lambda resp: f(request, resp))
 
     def _build_extra_route_handlers(self, api: TomcruApiEP, index: TomcruEndpoint | None = None):
@@ -208,7 +212,16 @@ class ApiGWFlaskSubservice(ApiGWSubserviceBase):
             #     else:
             #         print("!! Swagger model checker raised an exception: ", str(e))
 
+        if isinstance(response, tuple) and response[0] == '__FILE__':
+            return self.handle_file(response[1])
         return response
+
+    def handle_file(self, filepath):
+        # todo: handle streams later?
+        directory = os.path.dirname(filepath)
+        filename = os.path.basename(filepath)
+
+        return send_from_directory(directory=directory, path=filename)
 
     def aws_integ(self, serv_id, proxy_args=None, **kwargs):
         """

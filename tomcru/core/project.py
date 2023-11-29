@@ -62,6 +62,7 @@ class TomcruProject:
             _cfg = self.cfg if cfg_id is None else self.cfgs[cfg_id]
 
             envcfg = self.envcfgs[env_id]
+
             init_logging(envcfg.logging.get('loglvl', 'DEBUG'), envcfg.logging.get('filepath'))
 
             _env = map_env_to_appbuilder(self, _cfg, envcfg)

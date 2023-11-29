@@ -16,6 +16,7 @@ logger = logging.getLogger('tomcru')
 def ser(o: json_type) -> str:
     return b64encode(json.dumps(o).encode('utf8')).decode('utf8')
 
+
 def deser(s: str) -> json_type:
     return json.loads(b64decode(s.encode('utf8')))
 
@@ -53,12 +54,14 @@ class Py2NodeLambdaProxy:
                 self.is_shell = True
         logger.debug(f"[Py2NodeLambdaProxy] NODE PATH: {self.node_path} Is shell? {self.is_shell}")
 
-
     def deject_dependencies(self):
-        self.clean_proxy()
+        #self.clean_proxy()
+        pass
 
     def __call__(self, event: dict, context: LambdaHostedPyContext, **kwargs):
         env_dict = os.environ.copy()
+        # optimize size
+        event['headers'].pop('authorization', None)
         cmd = [self.node_path, 't_proxy.js', ser(event)]
         if self.is_shell:
             cmd = ' '.join(cmd)
@@ -73,25 +76,25 @@ class Py2NodeLambdaProxy:
             for line in p.stdout:
                 t_in = deser(line)
 
-                if 'serv_id' in t_in:
-                    logger.debug(f"[Py2NodeLambdaProxy] requesting service f{t_in}")
-
-                    if 'boto3' in t_in:
-                        import boto3
-                        #boto3 = self.srvmgr.service(self.env, 'boto3').boto3
-
-                        if t_in['boto3'] == 'resource':
-                            srv = boto3.resource(t_in['serv_id'])
-
-                            srv = getattr(srv, t_in['resource_type'])(t_in['resource_id'])
-                        else:
-                            srv = boto3.client(t_in['serv_id'])
-
-                        serv_resp = getattr(srv, t_in['method'])(**t_in['args'])
-                        p.stdin.write(ser(serv_resp)+'\n')
-                    else:
-                        raise NotImplementedError(t_in)
-                elif 'log' in t_in:
+                # if 'serv_id' in t_in:
+                #     logger.debug(f"[Py2NodeLambdaProxy] requesting service f{t_in}")
+                #
+                #     if 'boto3' in t_in:
+                #         import boto3
+                #         #boto3 = self.srvmgr.service(self.env, 'boto3').boto3
+                #
+                #         if t_in['boto3'] == 'resource':
+                #             srv = boto3.resource(t_in['serv_id'])
+                #
+                #             srv = getattr(srv, t_in['resource_type'])(t_in['resource_id'])
+                #         else:
+                #             srv = boto3.client(t_in['serv_id'])
+                #
+                #         serv_resp = getattr(srv, t_in['method'])(**t_in['args'])
+                #         p.stdin.write(ser(serv_resp)+'\n')
+                #     else:
+                #         raise NotImplementedError(t_in)
+                if 'log' in t_in:
                     logger.info(f"[Py2NodeLambdaProxy] log f{t_in['log']}")
                 elif 'err' in t_in:
                     logger.error(f"[Py2NodeLambdaProxy] error f{t_in['err']}")
@@ -113,36 +116,36 @@ class Py2NodeLambdaProxy:
             raise Exception("no resp from lambda!")
 
     def copy_proxy(self):
-        _aws = os.path.join(self.lambda_path, 'node_modules', 'aws-sdk')
+        # _aws = os.path.join(self.lambda_path, 'node_modules', 'aws-sdk')
+        #
+        # if os.path.exists(_aws):
+        #     if os.path.exists(os.path.join(_aws, 'proxylib.js')):
+        #         shutil.rmtree(_aws)
+        #     else:
+        #         # save aws sdk
+        #         os.rename(_aws, _aws+'_tmp')
+        if not os.path.exists(os.path.join(self.lambda_path, 't_proxy.js')):
+            shutil.copy(os.path.join(self.proxy_path, 't_proxy.js'), self.lambda_path)
+        #shutil.copytree(os.path.join(self.proxy_path, 'aws-sdk'), _aws)
 
-        if os.path.exists(_aws):
-            if os.path.exists(os.path.join(_aws, 'proxylib.js')):
-                shutil.rmtree(_aws)
-            else:
-                # save aws sdk
-                os.rename(_aws, _aws+'_tmp')
-
-        shutil.copy(os.path.join(self.proxy_path, 't_proxy.js'), self.lambda_path)
-        shutil.copytree(os.path.join(self.proxy_path, 'aws-sdk'), _aws)
-
-    def clean_proxy(self):
-        _aws = os.path.join(self.lambda_path, 'node_modules', 'aws-sdk')
-
-        if os.path.exists(_aws):
-            if os.path.exists(os.path.join(_aws, 'proxylib.js')):
-                # remove AWS sdk & tomcru lambda js proxy from node_modules
-                shutil.rmtree(_aws)
-
-        try:
-            os.remove(os.path.join(self.lambda_path, 't_proxy.js'))
-        except:
-            pass
-
-        # add back aws-sdk
-        try:
-            os.rename(_aws+'_tmp', _aws)
-        except:
-            pass
+    # def clean_proxy(self):
+    #     _aws = os.path.join(self.lambda_path, 'node_modules', 'aws-sdk')
+    #
+    #     if os.path.exists(_aws):
+    #         if os.path.exists(os.path.join(_aws, 'proxylib.js')):
+    #             # remove AWS sdk & tomcru lambda js proxy from node_modules
+    #             shutil.rmtree(_aws)
+    #
+    #     try:
+    #         os.remove(os.path.join(self.lambda_path, 't_proxy.js'))
+    #     except:
+    #         pass
+    #
+    #     # add back aws-sdk
+    #     try:
+    #         os.rename(_aws+'_tmp', _aws)
+    #     except:
+    #         pass
 
     def close(self):
         self.deject_dependencies()
