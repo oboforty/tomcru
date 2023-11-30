@@ -212,8 +212,7 @@ class BaseCfgParser:
 
             # post parse layers
             if isinstance(layers, str):
-                layers = layers.split("|")
-            if len(layers) > 0 and layers[0] == '': layers = layers.pop(0)
+                layers = layers.strip('|').split("|")
 
             if check_files:
                 # check if files exist
@@ -230,7 +229,7 @@ class BaseCfgParser:
         elif 'aws_api' in params or 'aws_http_proxy' in params:
             integ = TomcruAwsExposedApiIntegration(route, method, params['aws_api'])
         else:
-            raise Exception(f"Integration not recognized!")
+            raise Exception(f"Integration not recognized: {params}")
 
         return integ
 

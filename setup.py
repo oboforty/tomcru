@@ -2,7 +2,7 @@ from setuptools import setup
 
 
 setup(name='tomcru',
-      version='1.0.0',
+      version='1.0.1',
       description='Multi-purpose web framework',
       url='https://github.com/doorskgs/tomcru',
       author='oboforty',
