@@ -3,7 +3,7 @@ from flatten_json import flatten
 from collections import defaultdict
 
 from tomcru.core.cfg.proj import TomcruEnvCfg
-from tomcru.core.utils.toml_custom import toml, SettingWrapper
+from tomcru.core.utils.toml_custom import toml_load, SettingWrapper
 
 
 def unflatten_1lv(d):
@@ -36,7 +36,7 @@ class EnvParser:
     def load_env(self, basepath, env_envvar=None) -> TomcruEnvCfg:
         id = os.path.basename(basepath)
 
-        cfg = toml.load(os.path.join(basepath, 'tomcru.toml'))
+        cfg = toml_load(os.path.join(basepath, 'tomcru.toml'))
         envcfg = TomcruEnvCfg(id, cfg)
         envcfg.global_envvars = {}
 
@@ -46,7 +46,7 @@ class EnvParser:
             if 'envvars' == root_dirname:
                 # load envvars
                 for file in files:
-                    envvars_wrap = toml.load(os.path.join(root, file))
+                    envvars_wrap = toml_load(os.path.join(root, file))
                     envcfg.global_envvars.update(envvars_wrap.pop('__ALL__', {}))
 
                     if 'lambdas' in envvars_wrap:
@@ -59,7 +59,7 @@ class EnvParser:
                 for file in filter(lambda f: f.endswith('.toml'), files):
                     if file == 'tomcru.toml':
                         continue
-                    opts_wrap = toml.load(os.path.join(root, file))
+                    opts_wrap = toml_load(os.path.join(root, file))
 
                     if opts_wrap:
                         for serv, opts in opts_wrap.items():

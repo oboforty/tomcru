@@ -1,6 +1,17 @@
+import sys
 import configparser
 
-import toml
+
+if sys.version_info > (3, 10):
+    import tomllib
+
+    def toml_load(fn):
+        with open(fn, 'rb') as fh:
+            return tomllib.load(fh)
+else:
+    import toml
+    load_toml = toml
+
 
 from tomcru_jerry.utils import get_dict_hierarchy
 

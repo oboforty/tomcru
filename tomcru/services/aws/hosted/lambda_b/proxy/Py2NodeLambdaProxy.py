@@ -66,7 +66,7 @@ class Py2NodeLambdaProxy:
         if self.is_shell:
             cmd = ' '.join(cmd)
 
-        logger.debug(f"[Py2NodeLambdaProxy] calling f{cmd}")
+        logger.debug(f"[Py2NodeLambdaProxy] calling t_proxy.js")
 
         # todo: @later: pass serialzied json as binary instead of base64 between processes
         resp = None

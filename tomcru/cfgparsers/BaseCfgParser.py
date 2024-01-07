@@ -4,7 +4,7 @@ import logging
 
 from deepmerge import always_merger
 
-from tomcru.core.utils.toml_custom import toml, SettingWrapper
+from tomcru.core.utils.toml_custom import toml_load, SettingWrapper
 from tomcru.core.utils.yaml_custom import yaml
 
 from tomcru import TomcruSubProjectCfg, TomcruRouteEP, TomcruEndpoint, TomcruApiEP, \
@@ -63,7 +63,7 @@ class BaseCfgParser:
                     swaggers.append(filepath)
                     continue
                 elif file.endswith('.toml'):
-                    cfg = toml.load(filepath)
+                    cfg = toml_load(filepath)
                 elif file.endswith('.yaml') or file.endswith('yml'):
                     cfg = yaml.load(filepath)
                 elif file.endswith('.json'):

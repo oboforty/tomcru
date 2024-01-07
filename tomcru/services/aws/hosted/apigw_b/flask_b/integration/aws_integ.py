@@ -53,7 +53,7 @@ def signv4_verify(request, *, secret_getter) -> tuple[str,str] | None:
     # fetch request input:
     claims_request = get_auth_claims(request.headers)
     canonical_headers = {x: request.headers[x] for x in claims_request['SignedHeaders'].split(';')}
-    key, _, region, serv_id, _ = claims_request['Credential'].split('/')
+    key, req_date, region, serv_id, req_type = claims_request['Credential'].rsplit('/', 4)
 
     # fetch user credentials:
     secret = secret_getter(key)

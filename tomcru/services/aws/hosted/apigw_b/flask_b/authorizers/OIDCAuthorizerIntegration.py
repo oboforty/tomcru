@@ -66,6 +66,7 @@ class OIDCAuthorizerIntegration(TomcruApiGWAuthorizerIntegration):
         except (jwt.InvalidTokenError, AWSOIDCException) as e:
             # invalidated claims -> authorizer refuses the token
             self.last_err = str(e)
+            print(event)
 
             logger.error("[OIDC] JWT Authorizer error: ", str(type(e)), e)
             return None
