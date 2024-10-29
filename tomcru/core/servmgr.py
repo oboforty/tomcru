@@ -66,4 +66,8 @@ class ServiceManager:
         return self.objmgr.iter_services()
 
     def configured_services(self, env: TomcruEnvCfg):
+        """
+        Services are defined to be configured (used by a tomcru project)
+        if they're defined either in the cloud configuration (cfg) or env-dependent service optinns
+        """
         return set(self.p.cfg.services.keys()) | set(env.serv_opts.keys())

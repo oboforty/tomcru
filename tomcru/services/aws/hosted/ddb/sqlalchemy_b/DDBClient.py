@@ -11,7 +11,7 @@ try:
     from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
 except:
     # todo: redefine TypeDeserializer
-    pass
+    raise
 
 from .DDBSqlAlchemyTable import DDBSqlAlchemyTable
 

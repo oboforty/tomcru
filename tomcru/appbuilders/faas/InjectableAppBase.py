@@ -15,7 +15,6 @@ class InjectableAppBase:
         self.inited = False
 
     def __enter__(self):
-        import traceback
         if not self.inited:
             self.p.srvmgr.load_services(self.env)
 

@@ -10,7 +10,7 @@ if sys.version_info > (3, 10):
             return tomllib.load(fh)
 else:
     import toml
-    load_toml = toml
+    toml_load = toml
 
 
 from tomcru_jerry.utils import get_dict_hierarchy
